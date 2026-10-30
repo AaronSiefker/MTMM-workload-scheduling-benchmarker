@@ -1,0 +1,89 @@
+set up SCHED_FIFO
+using gil switch interval: 0.002
+settings:
+{'duration': 1000000000,
+ 'energy_interval_length': 0.11428571428571428,
+ 'energy_limit': 0.26,
+ 'face_detection_period': 0.02857142857142857,
+ 'gesture_classification_deadline_offset': 0.0,
+ 'gil_switch_interval': 0.002,
+ 'hand_detection_deadline': 0.02857142857142857,
+ 'hand_detection_period': 0.02857142857142857,
+ 'image_classification_deadline_offset': 0.02857142857142857,
+ 'image_classification_probability': 0.25,
+ 'is_hand_detection_deadline_shared': True,
+ 'is_keyword_spotting_deadline_shared': False,
+ 'keyword_spotting_deadline': 0.014285714285714285,
+ 'keyword_spotting_period': 0.014285714285714285,
+ 'used_benchmark': 'benchmarking_results/fixed_freq/default-gpu_only-SCHED_FIFO.json',
+ 'used_strategy': 'TRAINING_RL_AGENT',
+ 'warmup_iterations': 5,
+ 'xrbench_energy_max': 0.065}
+-------------------------------
+-------------------------------
+strategy_kwargs: {'agent': <scheduling.strategy.tabular.DefaultWorkloadQLearning.DefaultWorkloadQLearning object at 0xfffe366831d0>, 'is_learning': True, 'episode_length': 600.0, 'cuda_streams': [<torch.cuda.Stream device=cuda:0 cuda_stream=0x280e9050>, <torch.cuda.Stream device=cuda:0 cuda_stream=0x280f2bf0>], 'reset_workload_event': <threading.Event at 0xfffe367555e0: unset>, 'intermediate_model_path': PosixPath('rl_agents_tabular/energy_aware/DW_hp_energy_punishment_-0.4_all_eps=0.05_2_Streams')}
+current time: 18:23:39
+training_duration: 14400
+[10/05/2026-18:23:39] [TRT] [W] Using an engine plan file across different models of devices is not supported and is likely to affect performance or even cause errors or deadlock.
+[10/05/2026-18:23:40] [TRT] [W] Using an engine plan file across different models of devices is not supported and is likely to affect performance or even cause errors or deadlock.
+[10/05/2026-18:23:40] [TRT] [W] Using an engine plan file across different models of devices is not supported and is likely to affect performance or even cause errors or deadlock.
+[10/05/2026-18:23:40] [TRT] [W] Using an engine plan file across different models of devices is not supported and is likely to affect performance or even cause errors or deadlock.
+[10/05/2026-18:23:41] [TRT] [W] Using an engine plan file across different models of devices is not supported and is likely to affect performance or even cause errors or deadlock.
+[10/05/2026-18:23:41] [TRT] [W] Using an engine plan file across different models of devices is not supported and is likely to affect performance or even cause errors or deadlock.
+starting warmup; iterations: 5
+finished warmup
+current time: 18:33:42.407
+Total episode reward: 64377.407317514815
+current time: 18:43:42.756
+Total episode reward: 76336.62418351357
+current time: 18:53:43.104
+Total episode reward: 83640.74356482881
+current time: 19:03:43.433
+Total episode reward: 87844.44243962545
+current time: 19:13:43.758
+Total episode reward: 91951.4450482217
+current time: 19:23:44.086
+Total episode reward: 91065.20706524416
+current time: 19:33:44.409
+Total episode reward: 91013.1690084936
+current time: 19:43:44.733
+Total episode reward: 91056.56524314769
+current time: 19:53:45.053
+Total episode reward: 90336.43206483907
+current time: 20:03:45.382
+Total episode reward: 92069.03998704873
+current time: 20:13:45.709
+Total episode reward: 91883.66841296502
+current time: 20:23:46.033
+Total episode reward: 91989.84875638483
+current time: 20:33:46.358
+Total episode reward: 89096.05573184826
+current time: 20:43:46.683
+Total episode reward: 91652.059330756
+current time: 20:53:47.007
+Total episode reward: 89828.1438326032
+current time: 21:03:47.335
+Total episode reward: 90989.22642654253
+current time: 21:13:47.663
+Total episode reward: 93554.62061958767
+current time: 21:23:47.995
+Total episode reward: 94150.72221465674
+current time: 21:33:48.319
+Total episode reward: 90931.93554887264
+current time: 21:43:48.643
+Total episode reward: 91049.33072546222
+current time: 21:53:48.967
+Total episode reward: 91578.277686122
+current time: 22:03:49.290
+Total episode reward: 90826.68429773737
+current time: 22:13:49.614
+Total episode reward: 90635.32738339902
+canceled workload generator
+next_keyword_spotting_count: 41307
+face_detection_count: 20653
+hand_detection_count: 20653
+joined workload_thread
+shutting down scheduler thread pool
+terminated scheduler
+joined scheduler_thread
+saved agent at: rl_agents_tabular/energy_aware/DW_hp_energy_punishment_-0.4_all_eps=0.05_2_Streams
