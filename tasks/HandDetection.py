@@ -24,9 +24,9 @@ from tasks.dependencies.Dependency import Dependency
 
 class HandDetection(InferenceTask):
     class HandDetectionInputConverter(ConfigurationInputConverter):
-        def __init__(self, image_key : str, size : int):
-            self._image_key : Final[str] = image_key
-            self._size : Final[int] = size
+        def __init__(self, image_key: str, size: int):
+            self._image_key: Final[str] = image_key
+            self._size: Final[int] = size
 
         def convert_input(self, model_input: Dict[str, MultidimensionalArray]) -> Dict[str, MultidimensionalArray]:
             image = np.asarray(model_input[self._image_key])
@@ -40,24 +40,29 @@ class HandDetection(InferenceTask):
             # if it reached this point, this shouldn't fail, originally complains about possibility of Any or None
             # but with previous checks this should always be an np.ndarray
             # noinspection PyTypeChecker
-            out[self._image_key] = cv2.dnn.blobFromImage(image, 1 / 255.0, (self._size, self._size), swapRB=True, crop=False)
+            out[self._image_key] = cv2.dnn.blobFromImage(image, 1 / 255.0, (self._size, self._size), swapRB=True,
+                                                         crop=False)
             return out
 
+    image_key: Final[str] = "input"
+    task_name: Final[str] = "Hand Detection"
 
-    image_key : Final[str] = "input"
-    task_name : Final[str] = "Hand Detection"
-    def __init__(self, scheduler : Scheduler, relative_deadline, gpu_benchmark_results : Dict, cpu_benchmark_results : Dict,
-                 num_streams : int,
-                 dependencies : List[Dependency] | None = None):
+    def __init__(self, scheduler: Scheduler, relative_deadline, gpu_benchmark_results: Dict,
+                 cpu_benchmark_results: Dict,
+                 num_streams: int,
+                 dependencies: List[Dependency] | None = None):
         super().__init__(HandDetection.task_name, scheduler, relative_deadline, dependencies)
 
         model_id = "yolov3-tiny"
         trt_engine_variant = "fp16"
         gpu_model_id = f"trt-{model_id}_{trt_engine_variant}"
         cpu_model_id = f"onnx-{model_id}_fp32"
-        input_converter_size_512 : ConfigurationInputConverter = HandDetection.HandDetectionInputConverter(HandDetection.image_key, 512)
-        input_converter_size_416 : ConfigurationInputConverter = HandDetection.HandDetectionInputConverter(HandDetection.image_key, 416)
-        input_converter_size_320 : ConfigurationInputConverter = HandDetection.HandDetectionInputConverter(HandDetection.image_key, 320)
+        input_converter_size_512: ConfigurationInputConverter = HandDetection.HandDetectionInputConverter(
+            HandDetection.image_key, 512)
+        input_converter_size_416: ConfigurationInputConverter = HandDetection.HandDetectionInputConverter(
+            HandDetection.image_key, 416)
+        input_converter_size_320: ConfigurationInputConverter = HandDetection.HandDetectionInputConverter(
+            HandDetection.image_key, 320)
         trt_engine_path = f"../TensorRT/Hand_Detection/yolov3_tiny_{trt_engine_variant}.engine"
         model_variant = "img_size=512"
         gpu_config_512 = TaskConfiguration.create(
@@ -94,10 +99,12 @@ class HandDetection(InferenceTask):
         onnx_model = OnnxModel(onnx_model_path)
         gpu_post_processing = self.finalize_gpu_post_processing(HandDetection.gpu_post_processing)
         cpu_post_processing = self.finalize_cpu_post_processing(HandDetection.cpu_post_processing)
-        self.task_engine : Final[TaskEngine] = TaskEngine(self.task,
-            DefaultGpuConfiguration(gpu_config_512, trt_model, gpu_post_processing, num_streams),
-            CpuConfiguration(cpu_config_512, onnx_model, cpu_post_processing)
-        )
+        self.task_engine: Final[TaskEngine] = TaskEngine(self.task,
+                                                         DefaultGpuConfiguration(gpu_config_512, trt_model,
+                                                                                 gpu_post_processing, num_streams),
+                                                         CpuConfiguration(cpu_config_512, onnx_model,
+                                                                          cpu_post_processing)
+                                                         )
         self.task_engine.add_gpu_configuration(DefaultGpuConfiguration(
             gpu_config_416, trt_model, gpu_post_processing, num_streams
         ))
@@ -117,7 +124,7 @@ class HandDetection(InferenceTask):
         datapath = Path("~/scheduler_inputs/Hand_Detection").expanduser()
         for file in datapath.iterdir():
             if file.is_file():
-                image : np.ndarray | None = cv2.imread(file)
+                image: np.ndarray | None = cv2.imread(file)
                 if image is None:
                     raise ValueError("Could not load image:", file)
                 self._inputs.append(image)
@@ -129,7 +136,7 @@ class HandDetection(InferenceTask):
         return self.task_engine
 
     @staticmethod
-    def output_post_processing(outputs : torch.Tensor, job : TensorRtInferenceJob | OnnxInferenceJob):
+    def output_post_processing(outputs: torch.Tensor, job: TensorRtInferenceJob | OnnxInferenceJob):
         boxes = outputs[:, :4]
         scores = outputs[:, 4]
         # confidence
@@ -142,17 +149,19 @@ class HandDetection(InferenceTask):
 
         image_height, image_width = job.inputs.original_input[HandDetection.image_key].shape[:2]
 
-        scale = torch.tensor([image_width, image_height, image_width, image_height], dtype=torch.float32, device=boxes.device)
+        scale = torch.tensor([image_width, image_height, image_width, image_height], dtype=torch.float32,
+                             device=boxes.device)
         scaled_boxes = (boxes * scale).to(torch.int32)
         _ = torch.column_stack((scores, scaled_boxes))
+
     @staticmethod
-    def gpu_post_processing(job : TensorRtInferenceJob):
+    def gpu_post_processing(job: TensorRtInferenceJob):
         outputs = job.outputs["output"][0]
         HandDetection.output_post_processing(outputs, job)
 
     # adjusted from https://github.com/cansik/yolo-hand-detection
     @staticmethod
-    def cpu_post_processing(job : OnnxInferenceJob):
+    def cpu_post_processing(job: OnnxInferenceJob):
         if job.status != OnnxInferenceJobStatus.FINISHED:
             return
         outputs = torch.as_tensor(job.outputs[0])[0]

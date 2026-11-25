@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from typing import List, Dict, Final, Tuple
+from typing import TYPE_CHECKING
 
 import torch.cuda
 
@@ -11,33 +12,31 @@ from scheduling.strategy.SchedulingStrategy import SchedulingStrategy
 from task_processing.TaskEngine import TaskEngine
 from tasks.InferenceTask import InferenceTask
 
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from scheduling.BenchmarkScheduler import BenchmarkScheduler
 
 
 class MultiCudaStreamEdfGpu(SchedulingStrategy):
-    def __init__(self, benchmark_scheduler : BenchmarkScheduler, num_streams : int, is_green_context_based : bool = False,
-                 is_miss_aware : bool = False):
-        self._benchmark_scheduler : Final[BenchmarkScheduler] = benchmark_scheduler
+    def __init__(self, benchmark_scheduler: BenchmarkScheduler, num_streams: int, is_green_context_based: bool = False,
+                 is_miss_aware: bool = False):
+        self._benchmark_scheduler: Final[BenchmarkScheduler] = benchmark_scheduler
 
-        self._prepared_requests : List[InferenceRequest] = []
-        self._ongoing_requests : List[InferenceRequest | None] = [None for _ in range(num_streams)]
+        self._prepared_requests: List[InferenceRequest] = []
+        self._ongoing_requests: List[InferenceRequest | None] = [None for _ in range(num_streams)]
 
         if is_green_context_based:
             # prevent garbage collector from cleaning up the contexts
-            self._green_contexts = [torch.cuda.green_contexts.GreenContext.create(num_sms=4) for _ in range(num_streams)]
+            self._green_contexts = [torch.cuda.green_contexts.GreenContext.create(num_sms=4) for _ in
+                                    range(num_streams)]
             # noinspection PyUnresolvedReferences,PyTypeChecker
-            self._streams : Tuple[torch.cuda.Stream, ...] = tuple(context.Stream() for context in self._green_contexts)
+            self._streams: Tuple[torch.cuda.Stream, ...] = tuple(context.Stream() for context in self._green_contexts)
         else:
-            self._streams : Tuple[torch.cuda.Stream, ...] = tuple(torch.cuda.Stream() for _ in range(num_streams))
+            self._streams: Tuple[torch.cuda.Stream, ...] = tuple(torch.cuda.Stream() for _ in range(num_streams))
 
-        self._canceled_request_ids : List[str] = []
+        self._canceled_request_ids: List[str] = []
 
-        self._is_miss_aware : Final[bool] = is_miss_aware
-        self._task_engines_by_task_name : Dict[str, TaskEngine] = {}
-
+        self._is_miss_aware: Final[bool] = is_miss_aware
+        self._task_engines_by_task_name: Dict[str, TaskEngine] = {}
 
     def invoke(self, pending_requests: List[InferenceRequest]) -> None:
         now = time.perf_counter()
@@ -72,7 +71,8 @@ class MultiCudaStreamEdfGpu(SchedulingStrategy):
                 StrategyUtil.adjust_active_gpu_configurations_greedy(
                     self._task_engines_by_task_name.values(),
                     slack_time,
-                    lambda current, other: current.mean_inference_time[1] - other.mean_inference_time[1] # batch_size key in dict, not index in list
+                    lambda current, other: current.mean_inference_time[1] - other.mean_inference_time[1]
+                    # batch_size key in dict, not index in list
                 )
 
         for i in range(len(self._ongoing_requests)):
@@ -81,7 +81,7 @@ class MultiCudaStreamEdfGpu(SchedulingStrategy):
                 self._ongoing_requests[i] = None
                 return
 
-    def _start_preparing_requests(self, pending_requests : List[InferenceRequest]) -> None:
+    def _start_preparing_requests(self, pending_requests: List[InferenceRequest]) -> None:
         to_prepare = len(self._streams) - len(self._prepared_requests)
         if to_prepare == 0:
             return
@@ -95,7 +95,7 @@ class MultiCudaStreamEdfGpu(SchedulingStrategy):
                 self._task_engines_by_task_name[next_request.task.task] = next_request.task_engine
 
             gpu_config = next_request.task_engine.active_gpu_configuration
-            #gpu_config = next_request.task_engine.gpu_configurations[-1]
+            # gpu_config = next_request.task_engine.gpu_configurations[-1]
             self._benchmark_scheduler.begin_preparing_input_gpu(next_request, gpu_config)
             self._prepared_requests.append(next_request)
 

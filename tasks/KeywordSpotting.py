@@ -24,8 +24,8 @@ from tasks.dependencies.Dependency import Dependency
 
 class KeywordSpotting(InferenceTask):
     class KwsInputConverter(ConfigurationInputConverter):
-        def __init__(self, audio_key : str):
-            self._audio_key : Final[str] = audio_key
+        def __init__(self, audio_key: str):
+            self._audio_key: Final[str] = audio_key
             self._mel_transform = transforms.MelSpectrogram(
                 sample_rate=16000,
                 n_fft=400,
@@ -39,7 +39,7 @@ class KeywordSpotting(InferenceTask):
 
             # average over channels
             # samples only have one channel
-            #waveform = waveform.mean(dim=0, keepdim=True)
+            # waveform = waveform.mean(dim=0, keepdim=True)
 
             features = self._mel_transform(waveform)
             features = self._db_transform(features)
@@ -51,10 +51,12 @@ class KeywordSpotting(InferenceTask):
             out[self._audio_key] = features
             return out
 
-    task_name : Final[str] = "Keyword Spotting"
-    def __init__(self, scheduler : Scheduler, relative_deadline, gpu_benchmark_results : Dict, cpu_benchmark_results : Dict,
-                 num_streams : int,
-                 dependencies : List[Dependency] | None = None):
+    task_name: Final[str] = "Keyword Spotting"
+
+    def __init__(self, scheduler: Scheduler, relative_deadline, gpu_benchmark_results: Dict,
+                 cpu_benchmark_results: Dict,
+                 num_streams: int,
+                 dependencies: List[Dependency] | None = None):
         super().__init__(KeywordSpotting.task_name, scheduler, relative_deadline, dependencies)
         self._default_early_exit_threshold = torch.Tensor([0.85])
 
@@ -63,7 +65,7 @@ class KeywordSpotting(InferenceTask):
         gpu_model_id = f"trt-{model_id}_{trt_engine_variant}"
         cpu_model_id = f"onnx-{model_id}_fp32"
 
-        kws_input_converter : ConfigurationInputConverter = KeywordSpotting.KwsInputConverter("input")
+        kws_input_converter: ConfigurationInputConverter = KeywordSpotting.KwsInputConverter("input")
         threshold_key = "threshold"
         input_converter_threshold_090 = ComposedConverter(
             [kws_input_converter, ThresholdConverter(threshold_key, 0.90)]
@@ -121,19 +123,20 @@ class KeywordSpotting(InferenceTask):
         intermediate_features_key = "x"
         intermediate_prediction_key = "prediction"
         intermediate_confidence_key = "confidence"
-        self.task_engine : Final[TaskEngine] = TaskEngine(self.task,
-            EarlyExitGpuConfiguration(
-                gpu_config_090, early_trt_model,
-                intermediate_features_key=intermediate_features_key,
-                intermediate_prediction_key=intermediate_prediction_key,
-                intermediate_confidence_key=intermediate_confidence_key,
-                input_threshold_key=threshold_key,
-                late_trt_model=late_trt_model,
-                post_processing_callback=gpu_post_processing,
-                num_streams=num_streams
-            ),
-            CpuConfiguration(cpu_config_090, onnx_model, cpu_post_processing)
-        )
+        self.task_engine: Final[TaskEngine] = TaskEngine(self.task,
+                                                         EarlyExitGpuConfiguration(
+                                                             gpu_config_090, early_trt_model,
+                                                             intermediate_features_key=intermediate_features_key,
+                                                             intermediate_prediction_key=intermediate_prediction_key,
+                                                             intermediate_confidence_key=intermediate_confidence_key,
+                                                             input_threshold_key=threshold_key,
+                                                             late_trt_model=late_trt_model,
+                                                             post_processing_callback=gpu_post_processing,
+                                                             num_streams=num_streams
+                                                         ),
+                                                         CpuConfiguration(cpu_config_090, onnx_model,
+                                                                          cpu_post_processing)
+                                                         )
         self.task_engine.add_gpu_configuration(
             EarlyExitGpuConfiguration(
                 gpu_config_065, early_trt_model,

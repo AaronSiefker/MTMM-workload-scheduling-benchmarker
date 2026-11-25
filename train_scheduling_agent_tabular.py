@@ -15,6 +15,7 @@ from scheduling.BenchmarkScheduler import BenchmarkScheduler
 from scheduling.strategy.tabular.DefaultWorkloadQLearning import DefaultWorkloadQLearning
 from setup_helper import DefaultWorkloadSettings
 
+
 def main_2():
     setup_helper.try_increase_priority()
 
@@ -41,11 +42,13 @@ def main_2():
 
     agent_path = Path("rl_agents_tabular/energy_aware/DW_hp_energy_punishment_-0.4_all_eps=0.05_2_Streams")
     strategy_kwargs = {"agent": agent, "is_learning": True, "episode_length": 1.0 * 60 * 10,
-                       "cuda_streams": cuda_streams, "reset_workload_event": reset_event, "intermediate_model_path": agent_path}
+                       "cuda_streams": cuda_streams, "reset_workload_event": reset_event,
+                       "intermediate_model_path": agent_path}
     gc.disable()
     scheduler_thread, scheduler = start_benchmark_strategy_thread(BenchmarkScheduler.Strategy.RL_AGENT_TABULAR_TRAINING,
                                                                   "TRAINING_TEMP",
-                                                                  settings.energy_limit, settings.energy_interval_length,
+                                                                  settings.energy_limit,
+                                                                  settings.energy_interval_length,
                                                                   strategy_kwargs)
 
     workload_thread, cancellation_event = _default_workload_generation_deadline_scheduling(
@@ -65,7 +68,6 @@ def main_2():
 
     agent.save(agent_path)
     print("saved agent at:", agent_path)
-
 
 
 if __name__ == "__main__":

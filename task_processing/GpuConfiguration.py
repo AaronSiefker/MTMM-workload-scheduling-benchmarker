@@ -11,12 +11,13 @@ from task_processing.input_preparation.ConfigurationInputConverter import Multid
 
 
 class GpuConfiguration(ABC):
-    def __init__(self, task_configuration : TaskConfiguration,
-                 post_processing_callback : Callable[[TensorRtInferenceJob], None]):
-        self.task_configuration : Final[TaskConfiguration] = task_configuration
-        self._post_processing_callback : Callable[[TensorRtInferenceJob], None] = post_processing_callback
+    def __init__(self, task_configuration: TaskConfiguration,
+                 post_processing_callback: Callable[[TensorRtInferenceJob], None]):
+        self.task_configuration: Final[TaskConfiguration] = task_configuration
+        self._post_processing_callback: Callable[[TensorRtInferenceJob], None] = post_processing_callback
 
-    def prepare_input(self, model_input : Dict[str, MultidimensionalArray]) -> tuple[InputContainer[torch.Tensor], float]:
+    def prepare_input(self, model_input: Dict[str, MultidimensionalArray]) -> tuple[
+        InputContainer[torch.Tensor], float]:
         """
         Prepares the input for inference using this GpuConfiguration.
         Note that the tensors in the returned dictionary may share memory with the arrays in the original provided input.
@@ -25,20 +26,20 @@ class GpuConfiguration(ABC):
         """
         t1 = time.perf_counter()
         prepared_input = self.task_configuration.prepare_input(model_input)
-        prepared_converted : Dict[str, torch.Tensor] = {}
+        prepared_converted: Dict[str, torch.Tensor] = {}
         for key, value in prepared_input.items():
             prepared_converted[key] = torch.as_tensor(value)
         t2 = time.perf_counter()
         return InputContainer(model_input, prepared_converted), t2 - t1
 
     @abstractmethod
-    def prepare_inference_job(self, request_id : str, input_container : InputContainer[torch.Tensor], batch_size : int,
-                              request_time : float, deadline : float, stream : torch.cuda.Stream,
-                              stream_index : int) -> TensorRtInferenceJob:
+    def prepare_inference_job(self, request_id: str, input_container: InputContainer[torch.Tensor], batch_size: int,
+                              request_time: float, deadline: float, stream: torch.cuda.Stream,
+                              stream_index: int) -> TensorRtInferenceJob:
         pass
 
     @abstractmethod
-    def run_inference(self, job : TensorRtInferenceJob) -> float:
+    def run_inference(self, job: TensorRtInferenceJob) -> float:
         """
         Schedules the job for execution via tensorrt and blocks the thread until execution is finished.
         Once the execution is finished, the post-processing callback provided in the constructor for this instance
@@ -49,8 +50,8 @@ class GpuConfiguration(ABC):
         """
         pass
 
-    def execute(self, model_input : Dict[str, MultidimensionalArray], stream : torch.cuda.Stream,
-                request_id : str = "", stream_index = 0, batch_size = 1) -> tuple[float, float]:
+    def execute(self, model_input: Dict[str, MultidimensionalArray], stream: torch.cuda.Stream,
+                request_id: str = "", stream_index=0, batch_size=1) -> tuple[float, float]:
         """
         Performs inference for the given input. This method takes care of the input conversion to the configuration
         associated with this instance.
@@ -67,4 +68,3 @@ class GpuConfiguration(ABC):
         job = self.prepare_inference_job(request_id, input_container, batch_size, -1, -1, stream, stream_index)
         inference_time = self.run_inference(job)
         return input_preparation_time, inference_time
-

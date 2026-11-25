@@ -11,8 +11,10 @@ def select_lowest_deadline(requests: List[InferenceRequest]) -> Tuple[int, Infer
         return -1, None
     return min(enumerate(requests), key=lambda pair: pair[1].deadline)
 
-def adjust_active_gpu_configurations_greedy(task_engines : Iterable[TaskEngine], negative_slack : float,
-                                            calculate_improvement : Callable[[TaskConfiguration, TaskConfiguration], float]) \
+
+def adjust_active_gpu_configurations_greedy(task_engines: Iterable[TaskEngine], negative_slack: float,
+                                            calculate_improvement: Callable[
+                                                [TaskConfiguration, TaskConfiguration], float]) \
         -> None:
     """
 

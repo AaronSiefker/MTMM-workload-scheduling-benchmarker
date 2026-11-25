@@ -16,29 +16,32 @@ class EarlyExitGpuConfiguration(GpuConfiguration):
     """
     Assumes  that the intermediate prediction and confidence returned by the early model are scalars
     """
+
     def __init__(self, task_configuration: TaskConfiguration, early_trt_model: TensorRtModel,
-                 intermediate_features_key : str, intermediate_prediction_key : str, intermediate_confidence_key : str,
-                 input_threshold_key : str,
+                 intermediate_features_key: str, intermediate_prediction_key: str, intermediate_confidence_key: str,
+                 input_threshold_key: str,
                  late_trt_model: TensorRtModel,
                  post_processing_callback: Callable[[TensorRtInferenceJob], None],
-                 num_streams : int):
+                 num_streams: int):
         super().__init__(task_configuration, post_processing_callback)
-        self._early_trt_models : List[TensorRtModel] = [early_trt_model]
+        self._early_trt_models: List[TensorRtModel] = [early_trt_model]
         for _ in range(num_streams - 1):
             self._early_trt_models.append(TensorRtModel.copy_with_new_context(early_trt_model))
-        self._intermediate_features_key : Final[str] = intermediate_features_key
-        self._intermediate_prediction_key : Final[str] = intermediate_prediction_key
-        self._intermediate_confidence_key : Final[str] = intermediate_confidence_key
-        self._input_threshold_key : Final[str] = input_threshold_key
-        self._late_trt_models : List[TensorRtModel] = [late_trt_model]
+        self._intermediate_features_key: Final[str] = intermediate_features_key
+        self._intermediate_prediction_key: Final[str] = intermediate_prediction_key
+        self._intermediate_confidence_key: Final[str] = intermediate_confidence_key
+        self._input_threshold_key: Final[str] = input_threshold_key
+        self._late_trt_models: List[TensorRtModel] = [late_trt_model]
         for _ in range(num_streams - 1):
             self._late_trt_models.append(TensorRtModel.copy_with_new_context(late_trt_model))
 
-    def prepare_inference_job(self, request_id : str, input_container : InputContainer[torch.Tensor], batch_size : int,
-                              request_time : float, deadline : float, stream : torch.cuda.Stream,
-                              stream_index : int) -> TensorRtInferenceJob:
-        return self._early_trt_models[stream_index].prepare_inference_job(request_id, self.task_configuration, input_container,
-                                                           batch_size, request_time, deadline, stream, stream_index)
+    def prepare_inference_job(self, request_id: str, input_container: InputContainer[torch.Tensor], batch_size: int,
+                              request_time: float, deadline: float, stream: torch.cuda.Stream,
+                              stream_index: int) -> TensorRtInferenceJob:
+        return self._early_trt_models[stream_index].prepare_inference_job(request_id, self.task_configuration,
+                                                                          input_container,
+                                                                          batch_size, request_time, deadline, stream,
+                                                                          stream_index)
 
     def run_inference(self, job: TensorRtInferenceJob) -> float:
         # must transfer late_job.outputs into job.outputs, so that the caller can see them; caller never sees late_job

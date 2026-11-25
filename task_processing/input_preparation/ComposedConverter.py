@@ -6,7 +6,7 @@ from task_processing.input_preparation.ConfigurationInputConverter import Config
 
 class ComposedConverter(ConfigurationInputConverter):
 
-    def __init__(self, converters : Sequence[ConfigurationInputConverter]):
+    def __init__(self, converters: Sequence[ConfigurationInputConverter]):
         self._converters = list(converters)
 
     def convert_input(self, model_input: Dict[str, MultidimensionalArray]) -> Dict[str, MultidimensionalArray]:

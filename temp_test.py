@@ -3,8 +3,8 @@ import json
 import torch
 
 from scheduling.Scheduler import NullScheduler
-from tasks.GestureClassification import GestureClassification
 from tasks.FaceDetection import FaceDetection
+from tasks.GestureClassification import GestureClassification
 from tasks.HandDetection import HandDetection
 from tasks.ImageClassification import ImageClassification
 from tasks.KeywordSpotting import KeywordSpotting
@@ -59,14 +59,17 @@ if __name__ == "__main__":
     test.task_engine.cpu_configurations[2].execute(dummy_input)
 
     test1 = FaceDetection(null_scheduler, 0, benchmark_results, benchmark_results, 1)
-    test2 = GestureClassification(null_scheduler, 0, benchmark_results, benchmark_results, 0, [ProbabilisticDependency(test1, True, 1)])
+    test2 = GestureClassification(null_scheduler, 0, benchmark_results, benchmark_results, 0,
+                                  [ProbabilisticDependency(test1, True, 1)])
     print("test2._is_deadline_shared:", test2._is_deadline_shared)
-    test3 = HandDetection(null_scheduler, 0, benchmark_results, benchmark_results, 0, [RandomBatchSizeDependency(test1, False, [1,2,3,4])])
+    test3 = HandDetection(null_scheduler, 0, benchmark_results, benchmark_results, 0,
+                          [RandomBatchSizeDependency(test1, False, [1, 2, 3, 4])])
     print("test3._is_deadline_shared:", test3._is_deadline_shared)
-    test4 = KeywordSpotting(null_scheduler, 0, benchmark_results, benchmark_results, 0, [RandomBatchSizeDependency(test2, False, [1,2,3,4])])
+    test4 = KeywordSpotting(null_scheduler, 0, benchmark_results, benchmark_results, 0,
+                            [RandomBatchSizeDependency(test2, False, [1, 2, 3, 4])])
     test5 = ImageClassification(null_scheduler, 0, benchmark_results, benchmark_results, 0, [
         ProbabilisticDependency(test3, False, 1),
-        RandomBatchSizeDependency(test1, False,[1, 2, 3, 4])
+        RandomBatchSizeDependency(test1, False, [1, 2, 3, 4])
     ])
     print("test5._is_deadline_shared:", test5._is_deadline_shared)
 

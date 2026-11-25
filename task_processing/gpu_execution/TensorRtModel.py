@@ -1,24 +1,25 @@
 from __future__ import annotations
 
+import tensorrt as trt
+
 import torch
 
 from task_processing.InputContainer import InputContainer
 from task_processing.TaskConfiguration import TaskConfiguration
 from task_processing.gpu_execution.TensorRtEngine import TensorRtEngine
-import tensorrt as trt
-
 from task_processing.gpu_execution.TensorRtInferenceJob import TensorRtInferenceJob
 
 
 class TensorRtModel:
-    def __init__(self, trt_engine : TensorRtEngine):
-        self._trt_engine : TensorRtEngine = trt_engine
-        self._context : trt.tensorrt.IExecutionContext = trt_engine.create_execution_context()
+    def __init__(self, trt_engine: TensorRtEngine):
+        self._trt_engine: TensorRtEngine = trt_engine
+        self._context: trt.tensorrt.IExecutionContext = trt_engine.create_execution_context()
 
     @torch.no_grad()
-    def prepare_inference_job(self, request_id : str, associated_config : TaskConfiguration,
-                              input_container : InputContainer[torch.Tensor], batch_size : int, request_time : float, deadline : float,
-                              stream: torch.cuda.Stream, stream_index : int) -> TensorRtInferenceJob:
+    def prepare_inference_job(self, request_id: str, associated_config: TaskConfiguration,
+                              input_container: InputContainer[torch.Tensor], batch_size: int, request_time: float,
+                              deadline: float,
+                              stream: torch.cuda.Stream, stream_index: int) -> TensorRtInferenceJob:
         """
         Creates an inference job for the provided input and fully prepares self._context for
         the execution of said created inference job.
@@ -55,7 +56,7 @@ class TensorRtModel:
             return TensorRtInferenceJob(request_id, associated_config, self, stream, stream_index,
                                         input_container, batch_size, request_time, deadline, event, outputs)
 
-    def infer(self, inference_job : TensorRtInferenceJob) -> bool:
+    def infer(self, inference_job: TensorRtInferenceJob) -> bool:
         """
         Schedules the provided job for inference on the cuda stream provided to self.prepare_inference_job.
         After scheduling, an event is recorded on said stream which can be used to determine
@@ -75,5 +76,5 @@ class TensorRtModel:
         return success
 
     @staticmethod
-    def copy_with_new_context(model : TensorRtModel) -> TensorRtModel:
+    def copy_with_new_context(model: TensorRtModel) -> TensorRtModel:
         return TensorRtModel(model._trt_engine)

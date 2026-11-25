@@ -10,16 +10,16 @@ from task_processing.cpu_execution.OnnxInferenceJob import OnnxInferenceJob, Onn
 
 
 class OnnxModel:
-    def __init__(self, onnx_filepath : str):
-        self._session : InferenceSession = InferenceSession(onnx_filepath)
+    def __init__(self, onnx_filepath: str):
+        self._session: InferenceSession = InferenceSession(onnx_filepath)
 
-    def prepare_inference_job(self, request_id : str, associated_config : TaskConfiguration,
-                              input_container : InputContainer[np.ndarray], request_time : float, deadline : float,
-                              run_options : RunOptions) -> OnnxInferenceJob:
+    def prepare_inference_job(self, request_id: str, associated_config: TaskConfiguration,
+                              input_container: InputContainer[np.ndarray], request_time: float, deadline: float,
+                              run_options: RunOptions) -> OnnxInferenceJob:
         return OnnxInferenceJob(request_id, associated_config, self, input_container, request_time, deadline,
                                 run_options, OnnxInferenceJobStatus.PREPARED, [])
 
-    def infer(self, inference_job : OnnxInferenceJob):
+    def infer(self, inference_job: OnnxInferenceJob):
         if inference_job.onnx_model is not self:
             raise ValueError("Error, the provided inference job was not prepared using this OnnxModel")
 

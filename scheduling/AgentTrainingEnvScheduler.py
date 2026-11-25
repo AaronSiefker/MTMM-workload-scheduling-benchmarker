@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from enum import Enum, auto
-# noinspection PyProtectedMember
-from multiprocessing.connection import Connection
 import threading
 import time
 from datetime import datetime
+from enum import Enum, auto
+# noinspection PyProtectedMember
+from multiprocessing.connection import Connection
 from typing import Any, SupportsFloat, Tuple, List, Dict
 
 import gymnasium as gym
@@ -25,52 +25,52 @@ from xrbench_helper import calculate_xrbench_per_inference_score_no_energy
 
 # noinspection DuplicatedCode
 class AgentTrainingEnvScheduler(DefaultScheduler, gym.Env):
-    def __init__(self, agent_wrapper : AgentWrapper, cuda_streams : List[torch.cuda.Stream],
-                 episode_length : float,
-                 reset_workload_event : threading.Event, interrupt_workload_event : threading.Event,
-                 continue_workload_event : threading.Event):
+    def __init__(self, agent_wrapper: AgentWrapper, cuda_streams: List[torch.cuda.Stream],
+                 episode_length: float,
+                 reset_workload_event: threading.Event, interrupt_workload_event: threading.Event,
+                 continue_workload_event: threading.Event):
         super().__init__()
         self._agent_wrapper = agent_wrapper
         self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(agent_wrapper.observation_length,),
                                                 dtype=np.float32)
         self.action_space = gym.spaces.Discrete(agent_wrapper.num_actions)
 
-        self._cuda_streams : List[torch.cuda.Stream] = cuda_streams
-        self._prepared_requests : List[Tuple[InferenceRequest, float]] = []
-        self._ongoing_requests : List[Tuple[InferenceRequest, float] | None] = [None for _ in range(len(cuda_streams))]
+        self._cuda_streams: List[torch.cuda.Stream] = cuda_streams
+        self._prepared_requests: List[Tuple[InferenceRequest, float]] = []
+        self._ongoing_requests: List[Tuple[InferenceRequest, float] | None] = [None for _ in range(len(cuda_streams))]
 
-        self._current_observation : np.ndarray = np.zeros(agent_wrapper.observation_length)
+        self._current_observation: np.ndarray = np.zeros(agent_wrapper.observation_length)
 
         # self._remaining_prep_actions : int = 0
         # self._remaining_execution_actions : int = 0
-        self._next_stream_idx : int = -1
+        self._next_stream_idx: int = -1
         # prepare additional actions parallel to current executions
-        self._remaining_prep_actions_post : int = 0
+        self._remaining_prep_actions_post: int = 0
 
-        self._is_prep_action : bool = False
-        self._is_execution_action : bool = False
+        self._is_prep_action: bool = False
+        self._is_execution_action: bool = False
 
-        self._total_episode_reward : float = 0.0
+        self._total_episode_reward: float = 0.0
 
-        self._episode_length : float = episode_length
-        self._current_episode_end : float = time.perf_counter() + self._episode_length
+        self._episode_length: float = episode_length
+        self._current_episode_end: float = time.perf_counter() + self._episode_length
 
-        self._leftover_executions_previous_episode : List[str] = []
-        self._reset_workload_event : threading.Event = reset_workload_event
-        self._interrupt_workload_event : threading.Event = interrupt_workload_event
+        self._leftover_executions_previous_episode: List[str] = []
+        self._reset_workload_event: threading.Event = reset_workload_event
+        self._interrupt_workload_event: threading.Event = interrupt_workload_event
         self._interrupt_workload_event.set()
-        self._continue_workload_event : threading.Event = continue_workload_event
+        self._continue_workload_event: threading.Event = continue_workload_event
 
-        self._rollout_end_time : float | None = None
-        self._is_no_action : bool = False
+        self._rollout_end_time: float | None = None
+        self._is_no_action: bool = False
 
-        #self._step_end_time : float = 0.0
-        #self._ignore_next : bool = False
-        #self.inbetween_step_times : List[float] = []
+        # self._step_end_time : float = 0.0
+        # self._ignore_next : bool = False
+        # self.inbetween_step_times : List[float] = []
 
         self._has_increased_priority = False
 
-        self._step_end_time : float = -1
+        self._step_end_time: float = -1
 
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) \
             -> tuple[ObsType, dict[str, Any]]:
@@ -86,13 +86,13 @@ class AgentTrainingEnvScheduler(DefaultScheduler, gym.Env):
 
         # self._remaining_prep_actions : int = 0
         # self._remaining_execution_actions : int = 0
-        self._next_stream_idx : int = -1
-        self._remaining_prep_actions_post : int = 0
+        self._next_stream_idx: int = -1
+        self._remaining_prep_actions_post: int = 0
 
-        self._is_prep_action : bool = False
-        self._is_execution_action : bool = False
+        self._is_prep_action: bool = False
+        self._is_execution_action: bool = False
 
-        self._total_episode_reward : float = 0.0
+        self._total_episode_reward: float = 0.0
 
         self._current_episode_end: float = time.perf_counter() + self._episode_length
 
@@ -117,12 +117,12 @@ class AgentTrainingEnvScheduler(DefaultScheduler, gym.Env):
         self._current_observation = current_observation
         return current_observation, {}
 
-    def step(self, action: ActType)-> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
-        #timing_network_current = time.perf_counter()
-        #if not self._ignore_next:
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        # timing_network_current = time.perf_counter()
+        # if not self._ignore_next:
         #    time_diff = timing_network_current - self._step_end_time
         #    self.inbetween_step_times.append(time_diff)
-        #self._ignore_next = False
+        # self._ignore_next = False
         now = time.perf_counter()
         print(now - self._step_end_time)
 
@@ -144,14 +144,14 @@ class AgentTrainingEnvScheduler(DefaultScheduler, gym.Env):
         current_reward = self._handle_completed_requests()
         self._total_episode_reward += current_reward
         self._handle_missed_deadlines()
-        is_episode_end : bool = False
+        is_episode_end: bool = False
 
         free_streams = 0
         for request in self._ongoing_requests:
             if request is None:
                 free_streams += 1
         if (len(self._prepared_requests) == len(self._cuda_streams) and free_streams == 0) or \
-            (len(self._pending_requests) == 0 and (len(self._prepared_requests) == 0 or free_streams == 0)):
+                (len(self._pending_requests) == 0 and (len(self._prepared_requests) == 0 or free_streams == 0)):
             self._wake_up.wait()
             self._wake_up.clear()
             with self._new_requests_lock:
@@ -176,7 +176,8 @@ class AgentTrainingEnvScheduler(DefaultScheduler, gym.Env):
             if self._next_stream_idx < 0:
                 self._next_stream_idx = AgentWrapper.select_next_stream_index(self._next_stream_idx,
                                                                               self._ongoing_requests)
-        elif (is_execution_action or is_no_action) and len(self._prepared_requests) < len(self._cuda_streams) and len(self._pending_requests) > 0:
+        elif (is_execution_action or is_no_action) and len(self._prepared_requests) < len(self._cuda_streams) and len(
+                self._pending_requests) > 0:
             self._is_prep_action = True
             self._is_execution_action = False
         else:
@@ -266,7 +267,7 @@ class AgentTrainingEnvScheduler(DefaultScheduler, gym.Env):
                 for i in range(len(self._ongoing_requests)):
                     ongoing_request = self._ongoing_requests[i]
                     if ongoing_request is not None and \
-                        ongoing_request[0].request_id == current.request.request_id:
+                            ongoing_request[0].request_id == current.request.request_id:
                         self._ongoing_requests[i] = None
             self._completed_requests.clear()
         return current_reward / 100
@@ -276,7 +277,6 @@ class AgentTrainingEnvScheduler(DefaultScheduler, gym.Env):
         self.remove_missed_deadline_requests(self._pending_requests, current_time)
         self.remove_missed_deadline_requests_with_tuple(self._prepared_requests, current_time)
 
-
     def warmup(self, tasks: List[InferenceTask], warmup_iterations: int, custom_batch_sizes: Dict[str, int] = None):
         if custom_batch_sizes is None:
             custom_batch_sizes = {}
@@ -284,9 +284,9 @@ class AgentTrainingEnvScheduler(DefaultScheduler, gym.Env):
             SchedulingStrategy.warmup_gpu(tasks, warmup_iterations, custom_batch_sizes, stream, i)
 
     def on_rollout_start(self) -> None:
-        #print("started rollout; current time:", datetime.now().strftime("%H:%M:%S.%f")[:-3])
+        # print("started rollout; current time:", datetime.now().strftime("%H:%M:%S.%f")[:-3])
 
-        #self._ignore_next = True
+        # self._ignore_next = True
         self._continue_workload_event.set()
         if self._rollout_end_time is not None:
             time_diff = time.perf_counter() - self._rollout_end_time
@@ -296,13 +296,13 @@ class AgentTrainingEnvScheduler(DefaultScheduler, gym.Env):
                 request.deadline += time_diff
 
     def on_rollout_end(self) -> None:
-        #print("finished rollout; current time:", datetime.now().strftime("%H:%M:%S.%f")[:-3])
-        #print("current reward:", self._total_episode_reward)
+        # print("finished rollout; current time:", datetime.now().strftime("%H:%M:%S.%f")[:-3])
+        # print("current reward:", self._total_episode_reward)
         self._interrupt_workload_event.set()
         self._rollout_end_time = time.perf_counter()
 
     def on_training_end(self) -> None:
-        #print("training end reward:", self._total_episode_reward)
+        # print("training end reward:", self._total_episode_reward)
         print("shutting down scheduler thread pool")
         self._thread_pool.shutdown()
         print("terminated scheduler")
@@ -314,7 +314,7 @@ class AgentTrainingEnvScheduler(DefaultScheduler, gym.Env):
             return self._agent_wrapper.generate_action_mask(self._current_observation, True, -1)
         if self._is_execution_action:
             return self._agent_wrapper.generate_action_mask(self._current_observation, False,
-                                                          self._next_stream_idx)
+                                                            self._next_stream_idx)
         raise ValueError("Error, attempting to create action_mask while no prep action and no execution action "
                          "should be taken")
 
@@ -339,15 +339,16 @@ class AgentFunction(Enum):
     ROLLOUT_END = auto()
     TRAINING_END = auto()
 
+
 class AgentTrainingEnv(gym.Env):
-    def __init__(self, observation_length : int, num_actions : int,
-                 pipe : Connection):
+    def __init__(self, observation_length: int, num_actions: int,
+                 pipe: Connection):
         super().__init__()
         self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(observation_length,),
                                                 dtype=np.float32)
         self.action_space = gym.spaces.Discrete(num_actions)
 
-        self._pipe : Connection = pipe
+        self._pipe: Connection = pipe
 
         self._has_increased_priority = False
 
@@ -363,19 +364,18 @@ class AgentTrainingEnv(gym.Env):
         observation = self._pipe.recv()
         return observation, {}
 
-    def step(self, action : ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         self._pipe.send((AgentFunction.STEP, action))
         current_observation, current_reward, is_episode_end = self._pipe.recv()
         return current_observation, current_reward, is_episode_end, False, {}
 
     def on_rollout_start(self) -> None:
-
         self._pipe.send((AgentFunction.ROLLOUT_START,))
         # wait until on_rollout_start in other scheduler process is finished
         _ = self._pipe.recv()
 
     def on_rollout_end(self) -> None:
-        #print("finished rollout child; current time:", datetime.now().strftime("%H:%M:%S.%f")[:-3])
+        # print("finished rollout child; current time:", datetime.now().strftime("%H:%M:%S.%f")[:-3])
         self._pipe.send((AgentFunction.ROLLOUT_END,))
         _ = self._pipe.recv()
 
@@ -391,49 +391,49 @@ class AgentTrainingEnv(gym.Env):
 
 # noinspection DuplicatedCode
 class AgentTrainingScheduler(DefaultScheduler):
-    def __init__(self, agent_wrapper : AgentWrapper, cuda_streams : List[torch.cuda.Stream],
-                 episode_length : float, pipe : Connection,
+    def __init__(self, agent_wrapper: AgentWrapper, cuda_streams: List[torch.cuda.Stream],
+                 episode_length: float, pipe: Connection,
                  reset_workload_event: threading.Event,
                  interrupt_workload_event: threading.Event,
                  continue_workload_event: threading.Event
                  ):
         super().__init__()
         self._agent_wrapper = agent_wrapper
-        self._pipe : Connection = pipe
+        self._pipe: Connection = pipe
 
-        self._cuda_streams : List[torch.cuda.Stream] = cuda_streams
-        self._prepared_requests : List[Tuple[InferenceRequest, float]] = []
-        self._ongoing_requests : List[Tuple[InferenceRequest, float] | None] = [None for _ in range(len(cuda_streams))]
+        self._cuda_streams: List[torch.cuda.Stream] = cuda_streams
+        self._prepared_requests: List[Tuple[InferenceRequest, float]] = []
+        self._ongoing_requests: List[Tuple[InferenceRequest, float] | None] = [None for _ in range(len(cuda_streams))]
 
-        self._reset_workload_event : threading.Event = reset_workload_event
-        self._interrupt_workload_event : threading.Event = interrupt_workload_event
+        self._reset_workload_event: threading.Event = reset_workload_event
+        self._interrupt_workload_event: threading.Event = interrupt_workload_event
         self._interrupt_workload_event.set()
-        self._continue_workload_event : threading.Event = continue_workload_event
+        self._continue_workload_event: threading.Event = continue_workload_event
 
-        self._current_observation : np.ndarray = np.zeros(agent_wrapper.observation_length)
+        self._current_observation: np.ndarray = np.zeros(agent_wrapper.observation_length)
 
-        self._remaining_prep_actions : int = 0
-        self._remaining_execution_actions : int = 0
-        self._next_stream_idx : int = -1
+        self._remaining_prep_actions: int = 0
+        self._remaining_execution_actions: int = 0
+        self._next_stream_idx: int = -1
         # prepare additional actions parallel to current executions
-        self._remaining_prep_actions_post : int = 0
+        self._remaining_prep_actions_post: int = 0
 
         # self._is_prep_action : bool = False
         # self._is_execution_action : bool = False
 
-        self._total_episode_reward : float = 0.0
+        self._total_episode_reward: float = 0.0
 
-        self._episode_length : float = episode_length
-        self._current_episode_end : float = time.perf_counter() + self._episode_length
+        self._episode_length: float = episode_length
+        self._current_episode_end: float = time.perf_counter() + self._episode_length
 
         self._leftover_executions_previous_episode: List[str] = []
 
-        self._rollout_end_time : float | None = None
-        self._is_no_action : bool = False
+        self._rollout_end_time: float | None = None
+        self._is_no_action: bool = False
 
-        self._step_end_time : float = 0.0
-        self._ignore_next : bool = False
-        self.inbetween_step_times : List[float] = []
+        self._step_end_time: float = 0.0
+        self._ignore_next: bool = False
+        self.inbetween_step_times: List[float] = []
 
         self._has_increased_priority = False
 
@@ -447,15 +447,15 @@ class AgentTrainingScheduler(DefaultScheduler):
         print("total_episode_reward:", self._total_episode_reward)
         print("current time:", datetime.now().strftime("%H:%M:%S.%f")[:-3])
 
-        self._remaining_prep_actions : int = 0
-        self._remaining_execution_actions : int = 0
-        self._next_stream_idx : int = -1
-        self._remaining_prep_actions_post : int = 0
+        self._remaining_prep_actions: int = 0
+        self._remaining_execution_actions: int = 0
+        self._next_stream_idx: int = -1
+        self._remaining_prep_actions_post: int = 0
 
         # self._is_prep_action : bool = False
         # self._is_execution_action : bool = False
 
-        self._total_episode_reward : float = 0.0
+        self._total_episode_reward: float = 0.0
 
         self._current_episode_end: float = time.perf_counter() + self._episode_length
 
@@ -564,14 +564,14 @@ class AgentTrainingScheduler(DefaultScheduler):
     #
     #     return current_observation, current_reward, is_episode_end
 
-    def step(self, action : ActType) -> tuple[np.ndarray, float, bool]:
+    def step(self, action: ActType) -> tuple[np.ndarray, float, bool]:
         timing_network_current = time.perf_counter()
         if not self._ignore_next:
             time_diff = timing_network_current - self._step_end_time
             self.inbetween_step_times.append(time_diff)
         self._ignore_next = False
         current_reward = 0
-        is_episode_end : bool = False
+        is_episode_end: bool = False
         if self._remaining_prep_actions > 0:
             self._remaining_prep_actions -= 1
             request_index, gpu_config_idx = \
@@ -598,7 +598,8 @@ class AgentTrainingScheduler(DefaultScheduler):
             self._total_episode_reward += current_reward
             self._handle_missed_deadlines()
             # there won't be more pending requests until all these actions have been selected
-            self._remaining_prep_actions = min(len(self._cuda_streams) - len(self._prepared_requests), len(self._pending_requests))
+            self._remaining_prep_actions = min(len(self._cuda_streams) - len(self._prepared_requests),
+                                               len(self._pending_requests))
             self._remaining_execution_actions = 0
             for request in self._ongoing_requests:
                 if request is None:
@@ -607,7 +608,8 @@ class AgentTrainingScheduler(DefaultScheduler):
 
             # self._next_stream_idx is less than 0 if no stream was free during last selection
             if self._next_stream_idx < 0:
-                self._next_stream_idx = self._agent_wrapper.select_next_stream_index(self._next_stream_idx, self._ongoing_requests)
+                self._next_stream_idx = self._agent_wrapper.select_next_stream_index(self._next_stream_idx,
+                                                                                     self._ongoing_requests)
 
         current_time = time.perf_counter()
         current_observation = self._agent_wrapper.generate_observation_vector(
@@ -637,7 +639,7 @@ class AgentTrainingScheduler(DefaultScheduler):
                 for i in range(len(self._ongoing_requests)):
                     ongoing_request = self._ongoing_requests[i]
                     if ongoing_request is not None and \
-                        ongoing_request[0].request_id == current.request.request_id:
+                            ongoing_request[0].request_id == current.request.request_id:
                         self._ongoing_requests[i] = None
             self._completed_requests.clear()
         return current_reward
@@ -654,7 +656,7 @@ class AgentTrainingScheduler(DefaultScheduler):
             SchedulingStrategy.warmup_gpu(tasks, warmup_iterations, custom_batch_sizes, stream, i)
 
     def on_rollout_start(self) -> None:
-        #print("started rollout; current time:", datetime.now().strftime("%H:%M:%S.%f")[:-3])
+        # print("started rollout; current time:", datetime.now().strftime("%H:%M:%S.%f")[:-3])
 
         self._ignore_next = True
         self._continue_workload_event.set()
@@ -673,7 +675,7 @@ class AgentTrainingScheduler(DefaultScheduler):
         self._rollout_end_time = time.perf_counter()
 
     def on_training_end(self) -> None:
-        #print("training end reward:", self._total_episode_reward)
+        # print("training end reward:", self._total_episode_reward)
         print("shutting down scheduler thread pool")
         self._thread_pool.shutdown()
         print("terminated scheduler")
@@ -695,7 +697,7 @@ class AgentTrainingScheduler(DefaultScheduler):
             return self._agent_wrapper.generate_action_mask(self._current_observation, True, -1)
         if self._remaining_execution_actions > 0:
             return self._agent_wrapper.generate_action_mask(self._current_observation, False,
-                                                          self._next_stream_idx)
+                                                            self._next_stream_idx)
         if self._remaining_prep_actions_post > 0:
             return self._agent_wrapper.generate_action_mask(self._current_observation, True, -1)
         raise ValueError("Error, attempting to create action_mask while no prep action and no execution action "
@@ -731,4 +733,5 @@ class AgentTrainingScheduler(DefaultScheduler):
                     return
 
                 case _:
-                    raise ValueError(f"Error, could not decode the following message from the agent process:\n{str(received)}")
+                    raise ValueError(
+                        f"Error, could not decode the following message from the agent process:\n{str(received)}")

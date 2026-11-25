@@ -4,12 +4,14 @@ from typing import List
 
 import numpy as np
 
+
 def _generate_random_numbers() -> np.ndarray:
     rng = np.random.default_rng()
     return rng.random(100_000)
 
+
 class StaticRng:
-    _random_numbers : List[float] = _generate_random_numbers()
+    _random_numbers: List[float] = _generate_random_numbers()
 
     def __init__(self):
         rng = np.random.default_rng()

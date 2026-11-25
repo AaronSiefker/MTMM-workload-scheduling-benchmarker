@@ -17,7 +17,8 @@ def _constrain_0_or_1_and_one_selected(optimize, cx):
         optimize.add(c <= 1)
     optimize.add(z3.Sum(cx) == 1)
 
-def _get_inference_time(gpu_config : GpuConfiguration):
+
+def _get_inference_time(gpu_config: GpuConfiguration):
     inference_times_by_batch_size = gpu_config.task_configuration.static_98th_percentile_inference_time
     # for Default Workload only relevant for Gesture Classification, where batch_size=4 isn't much slower than batch_size=1
     max_batch_size = max(inference_times_by_batch_size)
@@ -25,7 +26,7 @@ def _get_inference_time(gpu_config : GpuConfiguration):
 
 
 # noinspection PyPep8Naming
-def _solve_default_workload(num_streams : int, is_normal_period : bool):
+def _solve_default_workload(num_streams: int, is_normal_period: bool):
     optimize = Optimize()
     period_length = 1.0 / 30 if is_normal_period else 1.0 / 35
     m = 1.0 / (2 * period_length)
@@ -47,15 +48,20 @@ def _solve_default_workload(num_streams : int, is_normal_period : bool):
 
     null_scheduler = NullScheduler()
     face_detection_configs = (
-        FaceDetection(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results, num_streams).task_engine.gpu_configurations)
+        FaceDetection(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results,
+                      num_streams).task_engine.gpu_configurations)
     hand_detection_configs = (
-        HandDetection(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results, num_streams).task_engine.gpu_configurations)
+        HandDetection(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results,
+                      num_streams).task_engine.gpu_configurations)
     gesture_classification_configs = (
-        GestureClassification(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results, num_streams).task_engine.gpu_configurations)
+        GestureClassification(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results,
+                              num_streams).task_engine.gpu_configurations)
     keyword_spotting_configs = (
-        KeywordSpotting(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results, num_streams).task_engine.gpu_configurations)
+        KeywordSpotting(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results,
+                        num_streams).task_engine.gpu_configurations)
     image_classification_configs = (
-        ImageClassification(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results, num_streams).task_engine.gpu_configurations)
+        ImageClassification(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results,
+                            num_streams).task_engine.gpu_configurations)
 
     # model scales
     # Face Detection
@@ -102,7 +108,7 @@ def _solve_default_workload(num_streams : int, is_normal_period : bool):
             optimize.add(s[2][j1] >= f[1][j2])
     # start time - KWS 2
     for j in range(num_streams):
-        optimize.add(s[4][j] >= (period_length / 2)) # second KWS becomes available after half the period
+        optimize.add(s[4][j] >= (period_length / 2))  # second KWS becomes available after half the period
     # start time - Image Classification 1
     for j1 in range(num_streams):
         for j2 in range(num_streams):
@@ -188,7 +194,7 @@ def _solve_default_workload(num_streams : int, is_normal_period : bool):
     # Latency Utilities
     UL = [Real(f"UL{i}") for i in range(7)]
     # Latency Utilities - period end (no Hand Detection, implicitly included, and no KWS 1) (with U_max = 1)
-    for i in (0, 2, 4, 5, 6): # We do not need 1, since Hand Detection is implicitly included in Gesture Classification
+    for i in (0, 2, 4, 5, 6):  # We do not need 1, since Hand Detection is implicitly included in Gesture Classification
         optimize.add(UL[i] == z3.If(
             tau[i] <= period_length,
             1,
@@ -200,40 +206,40 @@ def _solve_default_workload(num_streams : int, is_normal_period : bool):
         ))
     # Latency Utility - KWS 1
     optimize.add(UL[3] == z3.If(
-            tau[3] <= kws_1_deadline,
-            1,
-            z3.If(
-                tau[3] <= (3 * kws_1_deadline),
-                1 - m_kws_1 * (tau[3] - kws_1_deadline),
-                0
-            )
-        ))
+        tau[3] <= kws_1_deadline,
+        1,
+        z3.If(
+            tau[3] <= (3 * kws_1_deadline),
+            1 - m_kws_1 * (tau[3] - kws_1_deadline),
+            0
+        )
+    ))
     UL_avg = Real("UL_avg")
     optimize.add(UL_avg == (UL[0] + UL[2] + UL[3] + UL[4] + UL[5] + UL[6]) / 6.0)
 
     # Accuracy Utilities
     UA = [Real(f"UA{i}") for i in range(7)]
     optimize.add(UA[0] == (c0[0] * face_detection_configs[0].task_configuration.quality +
-             c0[1] * face_detection_configs[1].task_configuration.quality +
-             c0[2] * face_detection_configs[2].task_configuration.quality +
-             c0[3] * face_detection_configs[3].task_configuration.quality +
-             c0[4] * face_detection_configs[4].task_configuration.quality))
+                           c0[1] * face_detection_configs[1].task_configuration.quality +
+                           c0[2] * face_detection_configs[2].task_configuration.quality +
+                           c0[3] * face_detection_configs[3].task_configuration.quality +
+                           c0[4] * face_detection_configs[4].task_configuration.quality))
 
     optimize.add(UA[1] == (c1[0] * hand_detection_configs[0].task_configuration.quality +
-             c1[1] * hand_detection_configs[1].task_configuration.quality +
-             c1[2] * hand_detection_configs[2].task_configuration.quality))
+                           c1[1] * hand_detection_configs[1].task_configuration.quality +
+                           c1[2] * hand_detection_configs[2].task_configuration.quality))
 
     optimize.add(UA[2] == (c2[0] * gesture_classification_configs[0].task_configuration.quality +
-             c2[1] * gesture_classification_configs[1].task_configuration.quality +
-             c2[2] * gesture_classification_configs[2].task_configuration.quality))
+                           c2[1] * gesture_classification_configs[1].task_configuration.quality +
+                           c2[2] * gesture_classification_configs[2].task_configuration.quality))
 
     optimize.add(UA[3] == (c3[0] * keyword_spotting_configs[0].task_configuration.quality +
-             c3[1] * keyword_spotting_configs[1].task_configuration.quality +
-             c3[2] * keyword_spotting_configs[2].task_configuration.quality))
+                           c3[1] * keyword_spotting_configs[1].task_configuration.quality +
+                           c3[2] * keyword_spotting_configs[2].task_configuration.quality))
 
     optimize.add(UA[4] == (c4[0] * keyword_spotting_configs[0].task_configuration.quality +
-             c4[1] * keyword_spotting_configs[1].task_configuration.quality +
-             c4[2] * keyword_spotting_configs[2].task_configuration.quality))
+                           c4[1] * keyword_spotting_configs[1].task_configuration.quality +
+                           c4[2] * keyword_spotting_configs[2].task_configuration.quality))
 
     optimize.add(UA[5] == c5[0] * image_classification_configs[0].task_configuration.quality)
     optimize.add(UA[6] == c6[0] * image_classification_configs[0].task_configuration.quality)
@@ -243,16 +249,16 @@ def _solve_default_workload(num_streams : int, is_normal_period : bool):
 
     UA_max = Real("UA_max")
     optimize.add(UA_max == (face_detection_configs[0].task_configuration.quality +
-              hand_detection_configs[0].task_configuration.quality +
-              gesture_classification_configs[0].task_configuration.quality +
-              keyword_spotting_configs[0].task_configuration.quality +
-              keyword_spotting_configs[0].task_configuration.quality +
-              image_classification_configs[0].task_configuration.quality +
-              image_classification_configs[0].task_configuration.quality) / 7.0)
+                            hand_detection_configs[0].task_configuration.quality +
+                            gesture_classification_configs[0].task_configuration.quality +
+                            keyword_spotting_configs[0].task_configuration.quality +
+                            keyword_spotting_configs[0].task_configuration.quality +
+                            image_classification_configs[0].task_configuration.quality +
+                            image_classification_configs[0].task_configuration.quality) / 7.0)
 
     UC = Real("UC")
     # alpha=beta=0.5, UL_max=1 as well => do not need to divide it
-    optimize.add(UC == ( z3.RealVal(0.5) * (UA_avg / UA_max) + z3.RealVal(0.5) * UL_avg))
+    optimize.add(UC == (z3.RealVal(0.5) * (UA_avg / UA_max) + z3.RealVal(0.5) * UL_avg))
     optimize.add(UC <= 1)
 
     optimize.maximize(UC)
@@ -285,8 +291,10 @@ def _solve_default_workload(num_streams : int, is_normal_period : bool):
                 val = float(val.numerator_as_long()) / float(val.denominator_as_long())
             print(var, val)
 
+
 def main():
     _solve_default_workload(1, True)
+
 
 if __name__ == "__main__":
     main()

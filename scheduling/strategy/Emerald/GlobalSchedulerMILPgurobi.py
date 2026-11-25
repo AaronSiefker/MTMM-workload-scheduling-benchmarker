@@ -15,8 +15,9 @@ from tasks.KeywordSpotting import KeywordSpotting
 def _constrain_one_binary_variable_selected(model, variables):
     model.addConstr(sum(variables) == 1)
 
+
 # noinspection PyPep8Naming
-def _solve_default_workload(num_streams : int, is_normal_period : bool, is_mean_inference_times : bool):
+def _solve_default_workload(num_streams: int, is_normal_period: bool, is_mean_inference_times: bool):
     model = gp.Model()
     BIG_M = 1
 
@@ -40,15 +41,20 @@ def _solve_default_workload(num_streams : int, is_normal_period : bool, is_mean_
 
     null_scheduler = NullScheduler()
     face_detection_configs = (
-        FaceDetection(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results, num_streams).task_engine.gpu_configurations)
+        FaceDetection(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results,
+                      num_streams).task_engine.gpu_configurations)
     hand_detection_configs = (
-        HandDetection(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results, num_streams).task_engine.gpu_configurations)
+        HandDetection(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results,
+                      num_streams).task_engine.gpu_configurations)
     gesture_classification_configs = (
-        GestureClassification(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results, num_streams).task_engine.gpu_configurations)
+        GestureClassification(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results,
+                              num_streams).task_engine.gpu_configurations)
     keyword_spotting_configs = (
-        KeywordSpotting(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results, num_streams).task_engine.gpu_configurations)
+        KeywordSpotting(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results,
+                        num_streams).task_engine.gpu_configurations)
     image_classification_configs = (
-        ImageClassification(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results, num_streams).task_engine.gpu_configurations)
+        ImageClassification(null_scheduler, 0, gpu_benchmark_results, cpu_benchmark_results,
+                            num_streams).task_engine.gpu_configurations)
 
     # model scales
     # Face Detection
@@ -93,7 +99,7 @@ def _solve_default_workload(num_streams : int, is_normal_period : bool, is_mean_
             # start time - Gesture Classification
             model.addConstr(s[2][j1] >= f[1][j2])
     for j in range(num_streams):
-        model.addConstr(s[4][j] >= (period_length / 2)) # second KWS becomes available after half the period
+        model.addConstr(s[4][j] >= (period_length / 2))  # second KWS becomes available after half the period
     # start time - Image Classification 1
     for j1 in range(num_streams):
         for j2 in range(num_streams):
@@ -102,58 +108,65 @@ def _solve_default_workload(num_streams : int, is_normal_period : bool, is_mean_
     # execution times - Face Detection
     E0 = [model.addVar(vtype=GRB.CONTINUOUS, name=f"E0{j}") for j in range(num_streams)]
     for j in range(num_streams):
-        model.addConstr(E0[j] == (b[0][j] * (c0[0] * get_emerald_inference_time(face_detection_configs[0], is_mean_inference_times) +
-                                             c0[1] * get_emerald_inference_time(face_detection_configs[1], is_mean_inference_times) +
-                                             c0[2] * get_emerald_inference_time(face_detection_configs[2], is_mean_inference_times) +
-                                             c0[3] * get_emerald_inference_time(face_detection_configs[3], is_mean_inference_times) +
-                                             c0[4] * get_emerald_inference_time(face_detection_configs[4], is_mean_inference_times)
-                                             )
+        model.addConstr(E0[j] == (
+                    b[0][j] * (c0[0] * get_emerald_inference_time(face_detection_configs[0], is_mean_inference_times) +
+                               c0[1] * get_emerald_inference_time(face_detection_configs[1], is_mean_inference_times) +
+                               c0[2] * get_emerald_inference_time(face_detection_configs[2], is_mean_inference_times) +
+                               c0[3] * get_emerald_inference_time(face_detection_configs[3], is_mean_inference_times) +
+                               c0[4] * get_emerald_inference_time(face_detection_configs[4], is_mean_inference_times)
                                )
-                     )
+                    )
+                        )
     # execution times - Hand Detection
     E1 = [model.addVar(vtype=GRB.CONTINUOUS, name=f"E1{j}") for j in range(num_streams)]
     for j in range(num_streams):
-        model.addConstr(E1[j] == (b[1][j] * (c1[0] * get_emerald_inference_time(hand_detection_configs[0], is_mean_inference_times) +
-                                             c1[1] * get_emerald_inference_time(hand_detection_configs[1], is_mean_inference_times) +
-                                             c1[2] * get_emerald_inference_time(hand_detection_configs[2], is_mean_inference_times)
-                                             )
+        model.addConstr(E1[j] == (
+                    b[1][j] * (c1[0] * get_emerald_inference_time(hand_detection_configs[0], is_mean_inference_times) +
+                               c1[1] * get_emerald_inference_time(hand_detection_configs[1], is_mean_inference_times) +
+                               c1[2] * get_emerald_inference_time(hand_detection_configs[2], is_mean_inference_times)
                                )
-                     )
+                    )
+                        )
     # execution times - Gesture Classification
     E2 = [model.addVar(vtype=GRB.CONTINUOUS, name=f"E2{j}") for j in range(num_streams)]
     for j in range(num_streams):
-        model.addConstr(E2[j] == (b[2][j] * (c2[0] * get_emerald_inference_time(gesture_classification_configs[0], is_mean_inference_times) +
-                                             c2[1] * get_emerald_inference_time(gesture_classification_configs[1], is_mean_inference_times) +
-                                             c2[2] * get_emerald_inference_time(gesture_classification_configs[2], is_mean_inference_times)
-                                             )
-                               )
-                     )
+        model.addConstr(E2[j] == (b[2][j] * (
+                    c2[0] * get_emerald_inference_time(gesture_classification_configs[0], is_mean_inference_times) +
+                    c2[1] * get_emerald_inference_time(gesture_classification_configs[1], is_mean_inference_times) +
+                    c2[2] * get_emerald_inference_time(gesture_classification_configs[2], is_mean_inference_times)
+                    )
+                                  )
+                        )
     # execution times - KWS 1
     E3 = [model.addVar(vtype=GRB.CONTINUOUS, name=f"E3{j}") for j in range(num_streams)]
     for j in range(num_streams):
-        model.addConstr(E3[j] == (b[3][j] * (c3[0] * get_emerald_inference_time(keyword_spotting_configs[0], is_mean_inference_times) +
-                                             c3[1] * get_emerald_inference_time(keyword_spotting_configs[1], is_mean_inference_times) +
-                                             c3[2] * get_emerald_inference_time(keyword_spotting_configs[2], is_mean_inference_times)
-                                             )
-                               )
-                     )
+        model.addConstr(E3[j] == (b[3][j] * (
+                    c3[0] * get_emerald_inference_time(keyword_spotting_configs[0], is_mean_inference_times) +
+                    c3[1] * get_emerald_inference_time(keyword_spotting_configs[1], is_mean_inference_times) +
+                    c3[2] * get_emerald_inference_time(keyword_spotting_configs[2], is_mean_inference_times)
+                    )
+                                  )
+                        )
     # execution times - KWS 2
     E4 = [model.addVar(vtype=GRB.CONTINUOUS, name=f"E4{j}") for j in range(num_streams)]
     for j in range(num_streams):
-        model.addConstr(E4[j] == (b[4][j] * (c4[0] * get_emerald_inference_time(keyword_spotting_configs[0], is_mean_inference_times) +
-                                             c4[1] * get_emerald_inference_time(keyword_spotting_configs[1], is_mean_inference_times) +
-                                             c4[2] * get_emerald_inference_time(keyword_spotting_configs[2], is_mean_inference_times)
-                                             )
-                               )
-                     )
+        model.addConstr(E4[j] == (b[4][j] * (
+                    c4[0] * get_emerald_inference_time(keyword_spotting_configs[0], is_mean_inference_times) +
+                    c4[1] * get_emerald_inference_time(keyword_spotting_configs[1], is_mean_inference_times) +
+                    c4[2] * get_emerald_inference_time(keyword_spotting_configs[2], is_mean_inference_times)
+                    )
+                                  )
+                        )
     # execution times - Image Classification 1
     E5 = [model.addVar(vtype=GRB.CONTINUOUS, name=f"E5{j}") for j in range(num_streams)]
     for j in range(num_streams):
-        model.addConstr(E5[j] == b[5][j] * c5[0] * get_emerald_inference_time(image_classification_configs[0], is_mean_inference_times))
+        model.addConstr(E5[j] == b[5][j] * c5[0] * get_emerald_inference_time(image_classification_configs[0],
+                                                                              is_mean_inference_times))
     # execution times - Image Classification 2
     E6 = [model.addVar(vtype=GRB.CONTINUOUS, name=f"E6{j}") for j in range(num_streams)]
     for j in range(num_streams):
-        model.addConstr(E6[j] == b[6][j] * c6[0] * get_emerald_inference_time(image_classification_configs[0], is_mean_inference_times))
+        model.addConstr(E6[j] == b[6][j] * c6[0] * get_emerald_inference_time(image_classification_configs[0],
+                                                                              is_mean_inference_times))
 
     # constrain finish_time on start_time
     E = [E0, E1, E2, E3, E4, E5, E6]
@@ -182,31 +195,32 @@ def _solve_default_workload(num_streams : int, is_normal_period : bool, is_mean_
     UL = model.addVar(vtype=GRB.CONTINUOUS, name="UL")
     # xpts: the points it should linearly interpolate between (last value is an upper bound for tau)
     # ypts: the values it should linearly interpolate in between consecutive xpts
-    model.addGenConstrPWL(tau, UL, [0, period_length, 3 * period_length, 1], [1, 1, 0, 0]) # gurobi can interpolate correctly by itself
+    model.addGenConstrPWL(tau, UL, [0, period_length, 3 * period_length, 1],
+                          [1, 1, 0, 0])  # gurobi can interpolate correctly by itself
 
     # Accuracy Utilities
     UA = [model.addVar(vtype=GRB.CONTINUOUS, name=f"UA{i}") for i in range(7)]
     model.addConstr(UA[0] == (c0[0] * face_detection_configs[0].task_configuration.quality +
-             c0[1] * face_detection_configs[1].task_configuration.quality +
-             c0[2] * face_detection_configs[2].task_configuration.quality +
-             c0[3] * face_detection_configs[3].task_configuration.quality +
-             c0[4] * face_detection_configs[4].task_configuration.quality))
+                              c0[1] * face_detection_configs[1].task_configuration.quality +
+                              c0[2] * face_detection_configs[2].task_configuration.quality +
+                              c0[3] * face_detection_configs[3].task_configuration.quality +
+                              c0[4] * face_detection_configs[4].task_configuration.quality))
 
     model.addConstr(UA[1] == (c1[0] * hand_detection_configs[0].task_configuration.quality +
-             c1[1] * hand_detection_configs[1].task_configuration.quality +
-             c1[2] * hand_detection_configs[2].task_configuration.quality))
+                              c1[1] * hand_detection_configs[1].task_configuration.quality +
+                              c1[2] * hand_detection_configs[2].task_configuration.quality))
 
     model.addConstr(UA[2] == (c2[0] * gesture_classification_configs[0].task_configuration.quality +
-             c2[1] * gesture_classification_configs[1].task_configuration.quality +
-             c2[2] * gesture_classification_configs[2].task_configuration.quality))
+                              c2[1] * gesture_classification_configs[1].task_configuration.quality +
+                              c2[2] * gesture_classification_configs[2].task_configuration.quality))
 
     model.addConstr(UA[3] == (c3[0] * keyword_spotting_configs[0].task_configuration.quality +
-             c3[1] * keyword_spotting_configs[1].task_configuration.quality +
-             c3[2] * keyword_spotting_configs[2].task_configuration.quality))
+                              c3[1] * keyword_spotting_configs[1].task_configuration.quality +
+                              c3[2] * keyword_spotting_configs[2].task_configuration.quality))
 
     model.addConstr(UA[4] == (c4[0] * keyword_spotting_configs[0].task_configuration.quality +
-             c4[1] * keyword_spotting_configs[1].task_configuration.quality +
-             c4[2] * keyword_spotting_configs[2].task_configuration.quality))
+                              c4[1] * keyword_spotting_configs[1].task_configuration.quality +
+                              c4[2] * keyword_spotting_configs[2].task_configuration.quality))
 
     model.addConstr(UA[5] == c5[0] * image_classification_configs[0].task_configuration.quality)
     model.addConstr(UA[6] == c6[0] * image_classification_configs[0].task_configuration.quality)
@@ -223,7 +237,7 @@ def _solve_default_workload(num_streams : int, is_normal_period : bool, is_mean_
               image_classification_configs[0].task_configuration.quality) / 7.0
 
     UC = model.addVar(vtype=GRB.CONTINUOUS, name="UC")
-    model.addConstr(UC == ( 0.5 * (UA_avg / UA_max) + 0.5 * UL))
+    model.addConstr(UC == (0.5 * (UA_avg / UA_max) + 0.5 * UL))
     model.addConstr(UC <= 1)
 
     model.setObjectiveN(UC, index=0, priority=num_streams + 1, weight=GRB.MAXIMIZE)
@@ -244,8 +258,10 @@ def _solve_default_workload(num_streams : int, is_normal_period : bool, is_mean_
     else:
         print("failed :(")
 
+
 def main():
     _solve_default_workload(2, False, False)
+
 
 if __name__ == "__main__":
     main()

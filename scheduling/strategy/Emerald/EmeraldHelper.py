@@ -1,7 +1,7 @@
 from task_processing.GpuConfiguration import GpuConfiguration
 
 
-def get_emerald_inference_time(gpu_config : GpuConfiguration, is_mean : bool):
+def get_emerald_inference_time(gpu_config: GpuConfiguration, is_mean: bool):
     if is_mean:
         inference_times_by_batch_size = gpu_config.task_configuration.mean_inference_time
     else:

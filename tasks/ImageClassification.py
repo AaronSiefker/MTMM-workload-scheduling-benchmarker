@@ -21,39 +21,44 @@ from tasks.post_processing import gpu_post_processing_image_classification, cpu_
 
 
 class ImageClassification(InferenceTask):
-    task_name : Final[str] = "Image Classification"
-    def __init__(self, scheduler : Scheduler, relative_deadline, gpu_benchmark_results : Dict, cpu_benchmark_results : Dict,
-                 num_streams : int,
-                 dependencies : List[Dependency] | None = None):
+    task_name: Final[str] = "Image Classification"
+
+    def __init__(self, scheduler: Scheduler, relative_deadline, gpu_benchmark_results: Dict,
+                 cpu_benchmark_results: Dict,
+                 num_streams: int,
+                 dependencies: List[Dependency] | None = None):
         super().__init__(ImageClassification.task_name, scheduler, relative_deadline, dependencies)
 
-        model_id : str = "dinov2-vits14"
-        image_key : str = "image"
-        input_converter : ConfigurationInputConverter = ImageNetConverter(image_key)
+        model_id: str = "dinov2-vits14"
+        image_key: str = "image"
+        input_converter: ConfigurationInputConverter = ImageNetConverter(image_key)
         # NOTE: warmup taken from pytorch, didn't write it into my notes since here I only have this model anyway
         # for now, can extract from .npy-file later if necessary
         trt_engine_variant = "fp16"
-        trt_engine_path : str = f"../TensorRT/Image_Classification/dinov2_{trt_engine_variant}.engine"
+        trt_engine_path: str = f"../TensorRT/Image_Classification/dinov2_{trt_engine_variant}.engine"
 
         gpu_task_configuration = TaskConfiguration.create(
             self.task, f"trt-{model_id}_{trt_engine_variant}", 0.110, "default",
             input_converter, 0.877, gpu_benchmark_results, {"default": {1: 0.022488}}
         )
-        onnx_model_path : str = "../OnnxModels/Image_Classification/dinov2_vits14_Image_Classification.onnx"
+        onnx_model_path: str = "../OnnxModels/Image_Classification/dinov2_vits14_Image_Classification.onnx"
         cpu_task_configuration = TaskConfiguration.create(
             self.task, f"onnx-{model_id}_fp32", 0.0, "default",
             input_converter, 0.8772, cpu_benchmark_results, {}
         )
         trt_model = TensorRtModel(TensorRtEngine(trt_engine_path))
         onnx_model = OnnxModel(onnx_model_path)
-        self.task_engine : Final[TaskEngine] = TaskEngine(self.task,
-            DefaultGpuConfiguration(
-                gpu_task_configuration, trt_model,
-                self.finalize_gpu_post_processing(gpu_post_processing_image_classification("logits")), num_streams),
-            CpuConfiguration(
-                cpu_task_configuration, onnx_model,
-                self.finalize_cpu_post_processing(cpu_post_processing_image_classification(0)))
-        )
+        self.task_engine: Final[TaskEngine] = TaskEngine(self.task,
+                                                         DefaultGpuConfiguration(
+                                                             gpu_task_configuration, trt_model,
+                                                             self.finalize_gpu_post_processing(
+                                                                 gpu_post_processing_image_classification("logits")),
+                                                             num_streams),
+                                                         CpuConfiguration(
+                                                             cpu_task_configuration, onnx_model,
+                                                             self.finalize_cpu_post_processing(
+                                                                 cpu_post_processing_image_classification(0)))
+                                                         )
         self._fill_inputs()
 
     def _fill_inputs(self):

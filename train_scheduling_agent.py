@@ -1,7 +1,7 @@
 import json
 import multiprocessing
-from multiprocessing import connection
 import threading
+from multiprocessing import connection
 from pprint import pprint
 from statistics import mean
 
@@ -13,9 +13,9 @@ from torch import nn
 
 import setup_helper
 from benchmark_scheduling_strategy import _default_workload_generation_deadline_scheduling
-from setup_helper import DefaultWorkloadSettings
 from scheduling.AgentTrainingEnvScheduler import AgentTrainingEnvScheduler, AgentTrainingEnv, AgentTrainingScheduler
 from scheduling.AgentWrapper import DefaultWorkloadAgentWrapper
+from setup_helper import DefaultWorkloadSettings
 
 
 class SchedulerCallback(BaseCallback):
@@ -37,8 +37,8 @@ class SchedulerCallback(BaseCallback):
 
 
 # noinspection DuplicatedCode
-def process_train_func(observation_length : int, num_actions : int,
-                       pipe : multiprocessing.connection.Connection):
+def process_train_func(observation_length: int, num_actions: int,
+                       pipe: multiprocessing.connection.Connection):
     env = AgentTrainingEnv(observation_length, num_actions, pipe)
     vec_env = DummyVecEnv([lambda: env])
     policy_kwargs = {"net_arch": [32], "activation_fn": nn.ReLU}
@@ -85,16 +85,19 @@ def main_separate_process_training():
     cuda_streams = [torch.cuda.Stream()]
     print("num streams:", len(cuda_streams))
     agent_wrapper = DefaultWorkloadAgentWrapper(len(cuda_streams))
-    scheduler_env = AgentTrainingScheduler(agent_wrapper, cuda_streams, 10 * 60, parent_pipe, reset_event, interrupt_event, continue_event)
+    scheduler_env = AgentTrainingScheduler(agent_wrapper, cuda_streams, 10 * 60, parent_pipe, reset_event,
+                                           interrupt_event, continue_event)
 
     def this_process_func():
         scheduler_env.handle_agent_process_requests()
+
     thread = threading.Thread(target=this_process_func)
     thread.start()
 
     ctx = multiprocessing.get_context("spawn")
     # noinspection PyUnresolvedReferences
-    p = ctx.Process(target=process_train_func, args=(agent_wrapper.observation_length, agent_wrapper.num_actions, child_pipe))
+    p = ctx.Process(target=process_train_func,
+                    args=(agent_wrapper.observation_length, agent_wrapper.num_actions, child_pipe))
     p.start()
     workload_thread, cancellation_event = _default_workload_generation_deadline_scheduling(
         scheduler_env, gpu_benchmark_results, cpu_benchmark_results, settings, len(cuda_streams),
@@ -114,7 +117,6 @@ def main_separate_process_training():
 # noinspection DuplicatedCode
 def main():
     setup_helper.try_increase_priority()
-
 
     used_gpu_benchmark = "benchmarking_results/fixed_freq/default-gpu_only-background_gpu_benchmark-SCHED_FIFO.json"
     with open(used_gpu_benchmark) as f:
@@ -164,14 +166,15 @@ def main():
     cancellation_event.set()
     workload_thread.join()
 
-    #print("total step times:", len(env.inbetween_step_times))
-    #print("sum step times:", sum(env.inbetween_step_times))
-    #print("mean step time:", mean(env.inbetween_step_times))
+    # print("total step times:", len(env.inbetween_step_times))
+    # print("sum step times:", sum(env.inbetween_step_times))
+    # print("mean step time:", mean(env.inbetween_step_times))
 
     model.save("rl_agents/temp_test")
 
+
 if __name__ == "__main__":
-    #multiprocessing.set_start_method("spawn")
+    # multiprocessing.set_start_method("spawn")
     main()
     # print()
     # print("with separate process")

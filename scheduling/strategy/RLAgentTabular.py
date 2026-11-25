@@ -20,41 +20,40 @@ if TYPE_CHECKING:
 
 
 class RLAgentTabular(SchedulingStrategy):
-    def __init__(self, benchmark_scheduler : BenchmarkScheduler, agent : QLearningWrapper,
-                 is_learning : bool, episode_length : float | None, cuda_streams : List[torch.cuda.Stream],
-                 reset_workload_event : threading.Event | None,
-                 intermediate_model_path : Path = None):
-        self._benchmark_scheduler : Final[BenchmarkScheduler] = benchmark_scheduler
+    def __init__(self, benchmark_scheduler: BenchmarkScheduler, agent: QLearningWrapper,
+                 is_learning: bool, episode_length: float | None, cuda_streams: List[torch.cuda.Stream],
+                 reset_workload_event: threading.Event | None,
+                 intermediate_model_path: Path = None):
+        self._benchmark_scheduler: Final[BenchmarkScheduler] = benchmark_scheduler
 
-        self._agent : Final[QLearningWrapper] = agent
+        self._agent: Final[QLearningWrapper] = agent
         self._is_learning = is_learning
         if is_learning and (episode_length is None):
             raise ValueError("Error, episode_length must not be None when is_learning is True")
-        self._episode_length : float | None = episode_length
-        self._episode_end : float | None = None
-        self._reset_workload_event : threading.Event | None = reset_workload_event
+        self._episode_length: float | None = episode_length
+        self._episode_end: float | None = None
+        self._reset_workload_event: threading.Event | None = reset_workload_event
 
         self._streams = cuda_streams
         self._num_streams = len(cuda_streams)
 
-        self._prepared_requests : List[InferenceRequest] = []
-        self._ongoing_requests : List[InferenceRequest | None] = [None for _ in range(len(cuda_streams))]
+        self._prepared_requests: List[InferenceRequest] = []
+        self._ongoing_requests: List[InferenceRequest | None] = [None for _ in range(len(cuda_streams))]
 
-        self._previous_state : int | None = None
+        self._previous_state: int | None = None
 
-        self._canceled_request_ids : List[str] = []
-        self._previous_episode_leftover_request_ids : List[str] = []
+        self._canceled_request_ids: List[str] = []
+        self._previous_episode_leftover_request_ids: List[str] = []
 
-        self._intermediate_model_path : Path | None = intermediate_model_path
-        self._best_models : List[Tuple[int, Path] | None] = [None, None, None]
-
+        self._intermediate_model_path: Path | None = intermediate_model_path
+        self._best_models: List[Tuple[int, Path] | None] = [None, None, None]
 
     def invoke(self, pending_requests: List[InferenceRequest]) -> None:
         now = time.perf_counter()
         if self._is_learning and self._episode_length is not None and self._episode_end is None:
             self._episode_end = now + self._episode_length
-            #print("now:", now)
-            #print("episode end:", self._episode_end)
+            # print("now:", now)
+            # print("episode end:", self._episode_end)
         if self._is_learning and now > self._episode_end:
             if self._reset_workload_event is None:
                 raise ValueError("Error, attempting to end the episode while self._reset_workload_event is None")
@@ -91,7 +90,8 @@ class RLAgentTabular(SchedulingStrategy):
                                               self._ongoing_requests, self._streams)
 
         self._previous_state = self._agent.get_state_id(
-            pending_requests, self._prepared_requests, any(ongoing_request is None for ongoing_request in self._ongoing_requests)
+            pending_requests, self._prepared_requests,
+            any(ongoing_request is None for ongoing_request in self._ongoing_requests)
         )
         # fill up again after starting executions
         # TODO potentially train an agent without this, since a model-based agent performed better without this
@@ -100,7 +100,7 @@ class RLAgentTabular(SchedulingStrategy):
             self._agent.take_preparation_action(self._benchmark_scheduler, pending_requests,
                                                 self._prepared_requests, any_stream_free)
 
-    def _on_episode_end(self, now : float):
+    def _on_episode_end(self, now: float):
         self._episode_end = None
         self._previous_episode_leftover_request_ids.clear()
 
@@ -152,12 +152,11 @@ class RLAgentTabular(SchedulingStrategy):
         del self._best_models[0]
         self._best_models.insert(model_index, (new_total_episode_reward, new_path))
 
-
-    def _create_intermediate_model_path(self, reward : int) -> Path:
+    def _create_intermediate_model_path(self, reward: int) -> Path:
         if self._intermediate_model_path is None:
-            raise ValueError("Error, attempting to create concrete intermediate model path while self._intermediate_model_path is None")
+            raise ValueError(
+                "Error, attempting to create concrete intermediate model path while self._intermediate_model_path is None")
         return Path(str(self._intermediate_model_path) + "_ep_reward=" + str(reward))
-
 
     def get_num_cuda_streams(self) -> int:
         return self._num_streams
@@ -180,7 +179,7 @@ class RLAgentTabular(SchedulingStrategy):
                 self._ongoing_requests[i] = None
                 return
 
-    def on_energy_violation(self, results : List[SchedulingResult]):
+    def on_energy_violation(self, results: List[SchedulingResult]):
         self._agent.on_energy_violation(results)
 
     def handle_termination(self, current_time: float) -> None:

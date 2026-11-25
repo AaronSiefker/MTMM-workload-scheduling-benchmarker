@@ -21,25 +21,29 @@ from tasks.HandDetection import HandDetection
 from tasks.ImageClassification import ImageClassification
 from tasks.KeywordSpotting import KeywordSpotting
 
+
 class DefaultWorkloadTaskContainer:
-    def __init__(self, num_streams : int):
+    def __init__(self, num_streams: int):
         with open("benchmarking_results/fixed_freq/default.json") as f:
             benchmark_results = json.load(f)
 
         self.null_scheduler = NullScheduler()
         self.face_detection = FaceDetection(self.null_scheduler, 0, benchmark_results, benchmark_results, num_streams)
         self.hand_detection = HandDetection(self.null_scheduler, 0, benchmark_results, benchmark_results, num_streams)
-        self.gesture_classification = GestureClassification(self.null_scheduler, 0, benchmark_results, benchmark_results, num_streams)
-        self.keyword_spotting = KeywordSpotting(self.null_scheduler, 0, benchmark_results, benchmark_results, num_streams)
-        self.image_classification = ImageClassification(self.null_scheduler, 0, benchmark_results, benchmark_results, num_streams)
+        self.gesture_classification = GestureClassification(self.null_scheduler, 0, benchmark_results,
+                                                            benchmark_results, num_streams)
+        self.keyword_spotting = KeywordSpotting(self.null_scheduler, 0, benchmark_results, benchmark_results,
+                                                num_streams)
+        self.image_classification = ImageClassification(self.null_scheduler, 0, benchmark_results, benchmark_results,
+                                                        num_streams)
+
 
 # cycles: maximum number of iterations before a configuration isn't picked anymore. Not every config is present in every iteration
-def benchmark_default_workload(cycles : int, cycle_executions : int,
-                               default_workload_task_container : DefaultWorkloadTaskContainer, stream_index : int,
-                               benchmark_gpu : bool = True, benchmark_cpu : bool = True,
-                               warmup_iterations : int = 20) \
+def benchmark_default_workload(cycles: int, cycle_executions: int,
+                               default_workload_task_container: DefaultWorkloadTaskContainer, stream_index: int,
+                               benchmark_gpu: bool = True, benchmark_cpu: bool = True,
+                               warmup_iterations: int = 20) \
         -> Tuple[Dict[str, Dict[str, np.ndarray]], Dict[str, Dict[str, np.ndarray]]]:
-
     face_detection = default_workload_task_container.face_detection
     hand_detection = default_workload_task_container.hand_detection
     gesture_classification = default_workload_task_container.gesture_classification
@@ -76,10 +80,11 @@ def benchmark_default_workload(cycles : int, cycle_executions : int,
                     mapped_cpu_configs[t.task][config_id] = config
                     cpu_selection_counts[t.task][config_id] = 0
 
-    #context = torch.cuda.green_contexts.GreenContext.create(num_sms=4)
+    # context = torch.cuda.green_contexts.GreenContext.create(num_sms=4)
     # noinspection PyUnresolvedReferences
-    #stream = context.Stream()
+    # stream = context.Stream()
     stream = torch.cuda.Stream()
+
     def benchmark_iterations(processor_configs, mapped_processor_configs, current_config_ids, selection_counts):
         iteration = 1
         while len(processor_configs) > 2:
@@ -90,13 +95,18 @@ def benchmark_default_workload(cycles : int, cycle_executions : int,
             inputs = {
                 face_detection.task: [face_detection.generate_input(1)[0] for _ in range(cycle_executions)],
                 hand_detection.task: [hand_detection.generate_input(1)[0] for _ in range(cycle_executions)],
-                gesture_classification.task: [gesture_classification.generate_input(gesture_classification_batch_size)[0] for _ in range(cycle_executions)],
+                gesture_classification.task: [
+                    gesture_classification.generate_input(gesture_classification_batch_size)[0] for _ in
+                    range(cycle_executions)],
                 keyword_spotting.task: [keyword_spotting.generate_input(1)[0] for _ in range(cycle_executions)],
                 image_classification.task: [image_classification.generate_input(1)[0] for _ in range(cycle_executions)],
             }
-            _benchmark_cycle(processor_configs, stream, stream_index, inputs, current_config_ids, preparation_results, inference_results,
+            _benchmark_cycle(processor_configs, stream, stream_index, inputs, current_config_ids, preparation_results,
+                             inference_results,
                              selection_counts, num_executions=cycle_executions)
-            processor_configs, current_config_ids = _randomize_cycle_selection(mapped_processor_configs, processor_configs, selection_counts, cycles)
+            processor_configs, current_config_ids = _randomize_cycle_selection(mapped_processor_configs,
+                                                                               processor_configs, selection_counts,
+                                                                               cycles)
             print("finished iteration:", iteration)
             iteration += 1
 
@@ -119,53 +129,64 @@ def benchmark_default_workload(cycles : int, cycle_executions : int,
         benchmark_iterations(cpu_configs, mapped_cpu_configs, config_ids, cpu_selection_counts)
     return preparation_results, inference_results
 
+
 T = TypeVar("T", GpuConfiguration, CpuConfiguration)
-def _randomize_cycle_selection(processor_configs : Dict[str, Dict[str, T]], last_cycle_configs : List[T],
-                               selection_counts : Dict[str, Dict[str, int]], cycles : int) -> Tuple[List[T], Dict[str, str]]:
-        configs = []
-        config_ids = {}
-        for task_name in processor_configs.keys():
-            total_count = len(processor_configs[task_name])
-            eligible = [config_id for config_id, selection_count in selection_counts[task_name].items() if selection_count < cycles]
-            if total_count != 1:
-                eligible = [config_id for config_id in eligible if processor_configs[task_name][config_id] not in last_cycle_configs]
-            if task_name == "Gesture Classification" and total_count != 4:
-                eligible = [config_id for config_id in eligible if processor_configs[task_name][config_id] not in last_cycle_configs]
-            # in case we have more than one combination, but all others have already reached max cycles do not select,
-            # since we are then no longer switching between configurations thereby falsifying switching cost.
-            # If we only have one configuration, then we are not interested in the switching cost
-            #
-            # For Gesture Classification: 4 different batch sizes, so if there is just one GpuConfiguration left,
-            # it is in eligible 4 times due to different possible batch sizes
-            if eligible:
-                config_id = random.choice(eligible)
-                selection_counts[task_name][config_id] += 1
-                configs.append(processor_configs[task_name][config_id])
-                config_ids[task_name] = config_id
-        return configs, config_ids
 
 
-def _construct_config_id(task_config : TaskConfiguration, batch_size : int) -> str:
+def _randomize_cycle_selection(processor_configs: Dict[str, Dict[str, T]], last_cycle_configs: List[T],
+                               selection_counts: Dict[str, Dict[str, int]], cycles: int) -> Tuple[
+    List[T], Dict[str, str]]:
+    configs = []
+    config_ids = {}
+    for task_name in processor_configs.keys():
+        total_count = len(processor_configs[task_name])
+        eligible = [config_id for config_id, selection_count in selection_counts[task_name].items() if
+                    selection_count < cycles]
+        if total_count != 1:
+            eligible = [config_id for config_id in eligible if
+                        processor_configs[task_name][config_id] not in last_cycle_configs]
+        if task_name == "Gesture Classification" and total_count != 4:
+            eligible = [config_id for config_id in eligible if
+                        processor_configs[task_name][config_id] not in last_cycle_configs]
+        # in case we have more than one combination, but all others have already reached max cycles do not select,
+        # since we are then no longer switching between configurations thereby falsifying switching cost.
+        # If we only have one configuration, then we are not interested in the switching cost
+        #
+        # For Gesture Classification: 4 different batch sizes, so if there is just one GpuConfiguration left,
+        # it is in eligible 4 times due to different possible batch sizes
+        if eligible:
+            config_id = random.choice(eligible)
+            selection_counts[task_name][config_id] += 1
+            configs.append(processor_configs[task_name][config_id])
+            config_ids[task_name] = config_id
+    return configs, config_ids
+
+
+def _construct_config_id(task_config: TaskConfiguration, batch_size: int) -> str:
     return f"{task_config.model_id}@{task_config.model_variant}@batch_size={batch_size}"
 
-def _get_batch_size_from_config_id(config_id : str) -> int:
+
+def _get_batch_size_from_config_id(config_id: str) -> int:
     return int(config_id.split("=")[-1])
 
-def _deconstruct_config_id(config_id : str) -> Tuple[str, str, int]:
+
+def _deconstruct_config_id(config_id: str) -> Tuple[str, str, int]:
     split_config_id = config_id.split("@")
     return split_config_id[0], split_config_id[1], _get_batch_size_from_config_id(config_id)
 
 
-def _benchmark_cycle(configs : List[GpuConfiguration | CpuConfiguration], stream : torch.cuda.Stream, stream_index : int,
-                     inputs : Dict[str, List[Dict[str, MultidimensionalArray]]], config_ids : Dict[str, str],
-                     input_preparation_results : Dict[str, Dict[str, np.ndarray]], inference_results : Dict[str, Dict[str, np.ndarray]],
-                     selection_counts : Dict[str, Dict[str, int]], num_executions : int = 5) -> None:
+def _benchmark_cycle(configs: List[GpuConfiguration | CpuConfiguration], stream: torch.cuda.Stream, stream_index: int,
+                     inputs: Dict[str, List[Dict[str, MultidimensionalArray]]], config_ids: Dict[str, str],
+                     input_preparation_results: Dict[str, Dict[str, np.ndarray]],
+                     inference_results: Dict[str, Dict[str, np.ndarray]],
+                     selection_counts: Dict[str, Dict[str, int]], num_executions: int = 5) -> None:
     for i in range(0, num_executions):
         random.shuffle(configs)
         for config in configs:
             current_input = inputs[config.task_configuration.task][i]
             if isinstance(config, GpuConfiguration):
-                input_preparation_time, inference_time = config.execute(current_input, stream, stream_index=stream_index)
+                input_preparation_time, inference_time = config.execute(current_input, stream,
+                                                                        stream_index=stream_index)
             else:
                 input_preparation_time, inference_time = config.execute(current_input)
             task_name = config.task_configuration.task
@@ -174,21 +195,26 @@ def _benchmark_cycle(configs : List[GpuConfiguration | CpuConfiguration], stream
             input_preparation_results[task_name][config_id][cycle][i] = input_preparation_time
             inference_results[task_name][config_id][cycle][i] = inference_time
 
-def _remove_trailing_zeros(array : np.ndarray) -> np.ndarray:
+
+def _remove_trailing_zeros(array: np.ndarray) -> np.ndarray:
     last_index = np.max(np.where(np.any(array != 0, axis=1)))
     return array[:last_index + 1]
 
-def _check_results_existence(benchmark_name : str, results_directory : Path = None) -> bool:
+
+def _check_results_existence(benchmark_name: str, results_directory: Path = None) -> bool:
     if results_directory is None:
         results_directory = Path("./benchmarking_results")
     json_path = results_directory / f"{benchmark_name}.json"
     return json_path.exists()
 
-def save_benchmark_results(benchmark_name : str, benchmarking_results : Dict,
-                           preparation_results : Dict, inference_results : Dict, exist_ok=False, results_directory : Path = None):
+
+def save_benchmark_results(benchmark_name: str, benchmarking_results: Dict,
+                           preparation_results: Dict, inference_results: Dict, exist_ok=False,
+                           results_directory: Path = None):
     # already checked in main, just to be extra safe here
     if (not exist_ok) and _check_results_existence(benchmark_name, results_directory=results_directory):
-        raise ValueError(f"Error, a benchmark with name '{benchmark_name}' already exists. To overwrite, exist_ok must be true")
+        raise ValueError(
+            f"Error, a benchmark with name '{benchmark_name}' already exists. To overwrite, exist_ok must be true")
 
     if results_directory is None:
         results_directory = Path("./benchmarking_results")
@@ -208,7 +234,8 @@ def save_benchmark_results(benchmark_name : str, benchmarking_results : Dict,
     with open(concrete_results_directory / "inference_results.json", "w") as f:
         json.dump(inference_results, f, default=lambda x: x.tolist() if isinstance(x, np.ndarray) else x)
 
-def _start_background_inference(device : str) -> None:
+
+def _start_background_inference(device: str) -> None:
     def func():
         null_scheduler = NullScheduler()
         with open("benchmarking_results/default.json") as f:
@@ -228,7 +255,8 @@ def _start_background_inference(device : str) -> None:
     thread.start()
     print(f"started background work on device '{device}'")
 
-def _start_background_gpu_benchmark(task_container : DefaultWorkloadTaskContainer, stream_index : int) -> None:
+
+def _start_background_gpu_benchmark(task_container: DefaultWorkloadTaskContainer, stream_index: int) -> None:
     def func():
         benchmark_default_workload(400, 5, task_container, stream_index, benchmark_cpu=False)
 
@@ -236,13 +264,15 @@ def _start_background_gpu_benchmark(task_container : DefaultWorkloadTaskContaine
     thread.start()
     print("started background gpu benchmark")
 
-def _start_background_cpu_benchmark(task_container : DefaultWorkloadTaskContainer) -> None:
+
+def _start_background_cpu_benchmark(task_container: DefaultWorkloadTaskContainer) -> None:
     def func():
         benchmark_default_workload(200, 5, task_container, 0, benchmark_gpu=False)
 
     thread = threading.Thread(target=func, daemon=True)
     thread.start()
     print("started background cpu benchmark")
+
 
 def create_benchmarking_results(preparation_results, inference_results):
     benchmarking_results = {}
@@ -296,6 +326,7 @@ def create_benchmarking_results(preparation_results, inference_results):
     print("num_prep_times_greater_10ms:", num_prep_times_greater_10ms)
     return benchmarking_results
 
+
 def main():
     setup_helper.try_increase_priority()
 
@@ -304,18 +335,19 @@ def main():
     # for quick adjustments in case I do actually want to overwrite
     exist_ok = True
     if (not exist_ok) and _check_results_existence(benchmark_name):
-        raise ValueError(f"Error, a benchmark with name '{benchmark_name}' already exists. To overwrite, exist_ok must be true")
+        raise ValueError(
+            f"Error, a benchmark with name '{benchmark_name}' already exists. To overwrite, exist_ok must be true")
 
     num_streams = 1
     task_container = DefaultWorkloadTaskContainer(num_streams)
-    #_start_background_inference("cuda")
-    #_start_background_gpu_benchmark(task_container, 1)
-    #_start_background_cpu_benchmark(task_container)
+    # _start_background_inference("cuda")
+    # _start_background_gpu_benchmark(task_container, 1)
+    # _start_background_cpu_benchmark(task_container)
 
     gc.disable()
     preparation_results, inference_results = benchmark_default_workload(200, 5, task_container, 0, benchmark_cpu=False)
     gc.enable()
-    #pprint(preparation_results)
+    # pprint(preparation_results)
     benchmarking_results = create_benchmarking_results(preparation_results, inference_results)
 
     pprint(benchmarking_results)
@@ -323,7 +355,5 @@ def main():
     print(f"saved results with benchmark_name: '{benchmark_name}'")
 
 
-
 if __name__ == "__main__":
     main()
-

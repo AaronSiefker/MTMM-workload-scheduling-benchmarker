@@ -23,34 +23,36 @@ from tasks.post_processing import gpu_post_processing_image_classification, cpu_
 
 
 class GestureClassification(InferenceTask):
-    task_name : Final[str] = "Gesture Classification"
-    def __init__(self, scheduler : Scheduler, relative_deadline, gpu_benchmark_results : Dict, cpu_benchmark_results : Dict,
-                 num_streams : int,
-                 dependencies : List[Dependency] | None = None):
+    task_name: Final[str] = "Gesture Classification"
+
+    def __init__(self, scheduler: Scheduler, relative_deadline, gpu_benchmark_results: Dict,
+                 cpu_benchmark_results: Dict,
+                 num_streams: int,
+                 dependencies: List[Dependency] | None = None):
         super().__init__(GestureClassification.task_name, scheduler, relative_deadline, dependencies)
 
-        model_id : str = "MobileNetV3-Small"
+        model_id: str = "MobileNetV3-Small"
         trt_engine_variant = "fp16"
-        gpu_model_id : str = f"trt-{model_id}_{trt_engine_variant}"
-        cpu_model_id : str = f"onnx-{model_id}_fp32"
-        image_key : str = "x"
-        image_net_converter : ImageNetConverter = ImageNetConverter(image_key)
-        input_converter_size_256 : ConfigurationInputConverter = ComposedConverter(
+        gpu_model_id: str = f"trt-{model_id}_{trt_engine_variant}"
+        cpu_model_id: str = f"onnx-{model_id}_fp32"
+        image_key: str = "x"
+        image_net_converter: ImageNetConverter = ImageNetConverter(image_key)
+        input_converter_size_256: ConfigurationInputConverter = ComposedConverter(
             [ImageResizeConverter(image_key, 256), image_net_converter]
         )
-        input_converter_size_192 : ConfigurationInputConverter = ComposedConverter(
+        input_converter_size_192: ConfigurationInputConverter = ComposedConverter(
             [ImageResizeConverter(image_key, 192), image_net_converter]
         )
-        input_converter_size_160 : ConfigurationInputConverter = ComposedConverter(
+        input_converter_size_160: ConfigurationInputConverter = ComposedConverter(
             [ImageResizeConverter(image_key, 160), image_net_converter]
         )
-        trt_engine_path : str = f"../TensorRT/Gesture_Classification/MobileNetV3Small_batched_{trt_engine_variant}.engine"
+        trt_engine_path: str = f"../TensorRT/Gesture_Classification/MobileNetV3Small_batched_{trt_engine_variant}.engine"
         batch_sizes = [1, 2, 3, 4]
         model_variant = "img_size=256"
         gpu_config_256 = TaskConfiguration.create(
             self.task, gpu_model_id, 0.147, model_variant, input_converter_size_256,
             0.9750, gpu_benchmark_results,
-            {"default": {1: 0.003325, 2:  0.003961, 3: 0.005433, 4: 0.006944}},
+            {"default": {1: 0.003325, 2: 0.003961, 3: 0.005433, 4: 0.006944}},
             batch_sizes=batch_sizes
         )
         model_variant = "img_size=192"
@@ -85,7 +87,7 @@ class GestureClassification(InferenceTask):
         onnx_model = OnnxModel(onnx_model_path)
         gpu_post_processing = self.finalize_gpu_post_processing(gpu_post_processing_image_classification("linear_1"))
         cpu_post_processing = self.finalize_cpu_post_processing(cpu_post_processing_image_classification(0))
-        self.task_engine : Final[TaskEngine] = TaskEngine(
+        self.task_engine: Final[TaskEngine] = TaskEngine(
             self.task, DefaultGpuConfiguration(gpu_config_256, trt_model, gpu_post_processing, num_streams),
             CpuConfiguration(cpu_config_256, onnx_model, cpu_post_processing)
         )

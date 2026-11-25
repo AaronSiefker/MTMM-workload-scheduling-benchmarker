@@ -9,10 +9,10 @@ from task_processing.input_preparation.ConfigurationInputConverter import Config
 
 class ImageNetConverter(ConfigurationInputConverter):
     def __init__(self, image_key):
-        self._image_key : str = image_key
+        self._image_key: str = image_key
         self._normalize = transforms.Normalize(
-                                mean=[0.485, 0.456, 0.406],
-                                std=[0.229, 0.224, 0.225],
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225],
         )
 
     def convert_input(self, model_input: Dict[str, MultidimensionalArray]) -> Dict[str, MultidimensionalArray]:

@@ -1,7 +1,7 @@
 import tensorrt as trt
-import torch
-
 from typing import Dict, List
+
+import torch
 
 
 class TensorRtEngine:
@@ -16,10 +16,10 @@ class TensorRtEngine:
         runtime = trt.Runtime(TensorRtEngine.logger)
         self._engine = runtime.deserialize_cuda_engine(engine_bytes)
 
-        input_names : List[str] = []
-        output_names : List[str] = []
+        input_names: List[str] = []
+        output_names: List[str] = []
 
-        self.output_datatypes : Dict[str, torch.dtype] = {}
+        self.output_datatypes: Dict[str, torch.dtype] = {}
 
         for i in range(self._engine.num_io_tensors):
             tensor_name = self._engine.get_tensor_name(i)
@@ -35,8 +35,8 @@ class TensorRtEngine:
         if len(output_names) <= 0:
             raise RuntimeError("Error, the provided engine '{engine_path}' does not contain any output tensors")
 
-        self.input_names : tuple[str, ...] = tuple(input_names)
-        self.output_names : tuple[str, ...] = tuple(output_names)
+        self.input_names: tuple[str, ...] = tuple(input_names)
+        self.output_names: tuple[str, ...] = tuple(output_names)
 
         for output_name in self.output_names:
             trt_to_torch = {

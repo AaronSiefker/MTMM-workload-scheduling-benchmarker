@@ -1,5 +1,4 @@
 import json
-import os
 from pathlib import Path
 
 import numpy as np
@@ -95,6 +94,7 @@ def main():
     # plt.title(f"Gesture Classification, batch_size=4")
     # plt.savefig(Path("images") / "Gesture Classification batch_size=4.svg")
     # plt.close()
+
 
 if __name__ == "__main__":
     main()

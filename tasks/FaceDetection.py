@@ -65,6 +65,7 @@ cfg_mnet = {
     'out_channel': 64
 }
 
+
 # adjusted PriorBox from https://github.com/biubug6/Pytorch_Retinaface to work on gpu and cpu
 class PriorBoxDevice:
     def __init__(self, cfg, image_size, device=None):
@@ -81,7 +82,6 @@ class PriorBoxDevice:
         anchors_all = []
 
         for k, (f_h, f_w) in enumerate(self.feature_maps):
-
             step = self.steps[k]
 
             min_sizes = torch.tensor(self.min_sizes[k], dtype=torch.float32, device=self.device)
@@ -117,6 +117,7 @@ class PriorBoxDevice:
             output = output.clamp(0, 1)
 
         return output
+
 
 # taken from https://github.com/biubug6/Pytorch_Retinaface
 # Original license text:
@@ -164,11 +165,12 @@ def decode(loc, priors, variances):
     boxes[:, 2:] += boxes[:, :2]
     return boxes
 
+
 class FaceDetection(InferenceTask):
     class FaceDetectionInputConverter(ConfigurationInputConverter):
-        def __init__(self, image_key : str, final_size : int):
-            self._image_key : Final[str] = image_key
-            self._final_size : Final[int] = final_size
+        def __init__(self, image_key: str, final_size: int):
+            self._image_key: Final[str] = image_key
+            self._final_size: Final[int] = final_size
 
         def convert_input(self, model_input: Dict[str, MultidimensionalArray]) -> Dict[str, MultidimensionalArray]:
             image = np.asarray(model_input[self._image_key])
@@ -176,9 +178,10 @@ class FaceDetection(InferenceTask):
                 image = image.astype(np.float32)
             height = int(image.shape[0])
             width = int(image.shape[1])
-            if len(image.shape) == 4: # batched images
+            if len(image.shape) == 4:  # batched images
                 if image.shape[0] > 1:
-                    raise NotImplementedError("Did not implement convert_input for FaceDetectionInputConverter for batched images")
+                    raise NotImplementedError(
+                        "Did not implement convert_input for FaceDetectionInputConverter for batched images")
                 height, width = image.shape[1:3]
                 image = image[0]
 
@@ -195,23 +198,30 @@ class FaceDetection(InferenceTask):
             out[self._image_key] = image
             return out
 
-    image_key : Final[str] = "input"
-    task_name : Final[str] = "Face Detection"
-    def __init__(self, scheduler : Scheduler, relative_deadline, gpu_benchmark_results : Dict, cpu_benchmark_results : Dict,
-                 num_streams : int,
-                 dependencies : List[Dependency] | None = None):
+    image_key: Final[str] = "input"
+    task_name: Final[str] = "Face Detection"
+
+    def __init__(self, scheduler: Scheduler, relative_deadline, gpu_benchmark_results: Dict,
+                 cpu_benchmark_results: Dict,
+                 num_streams: int,
+                 dependencies: List[Dependency] | None = None):
         super().__init__(FaceDetection.task_name, scheduler, relative_deadline, dependencies)
 
-        model_id : str = "mobilenetv1_retinaface"
-        trt_engine_variant : str = "fp32"
-        gpu_model_id : str = f"trt-{model_id}_{trt_engine_variant}"
-        cpu_model_id : str = f"onnx-{model_id}_fp32"
-        input_converter_size_1024 : ConfigurationInputConverter = FaceDetection.FaceDetectionInputConverter(FaceDetection.image_key, 1024)
-        input_converter_size_832 : ConfigurationInputConverter = FaceDetection.FaceDetectionInputConverter(FaceDetection.image_key, 832)
-        input_converter_size_640 : ConfigurationInputConverter = FaceDetection.FaceDetectionInputConverter(FaceDetection.image_key, 640)
-        input_converter_size_576 : ConfigurationInputConverter = FaceDetection.FaceDetectionInputConverter(FaceDetection.image_key, 576)
-        input_converter_size_512 : ConfigurationInputConverter = FaceDetection.FaceDetectionInputConverter(FaceDetection.image_key, 512)
-        trt_engine_path : str = f"../TensorRT/Face_Detection/Retinaface_{trt_engine_variant}.engine"
+        model_id: str = "mobilenetv1_retinaface"
+        trt_engine_variant: str = "fp32"
+        gpu_model_id: str = f"trt-{model_id}_{trt_engine_variant}"
+        cpu_model_id: str = f"onnx-{model_id}_fp32"
+        input_converter_size_1024: ConfigurationInputConverter = FaceDetection.FaceDetectionInputConverter(
+            FaceDetection.image_key, 1024)
+        input_converter_size_832: ConfigurationInputConverter = FaceDetection.FaceDetectionInputConverter(
+            FaceDetection.image_key, 832)
+        input_converter_size_640: ConfigurationInputConverter = FaceDetection.FaceDetectionInputConverter(
+            FaceDetection.image_key, 640)
+        input_converter_size_576: ConfigurationInputConverter = FaceDetection.FaceDetectionInputConverter(
+            FaceDetection.image_key, 576)
+        input_converter_size_512: ConfigurationInputConverter = FaceDetection.FaceDetectionInputConverter(
+            FaceDetection.image_key, 512)
+        trt_engine_path: str = f"../TensorRT/Face_Detection/Retinaface_{trt_engine_variant}.engine"
 
         model_variant = "img_size=1024"
         gpu_config_1024 = TaskConfiguration.create(
@@ -267,7 +277,7 @@ class FaceDetection(InferenceTask):
 
         trt_model = TensorRtModel(TensorRtEngine(trt_engine_path))
         onnx_model = OnnxModel(onnx_model_path)
-        self.task_engine : Final[TaskEngine] = TaskEngine(
+        self.task_engine: Final[TaskEngine] = TaskEngine(
             self.task, DefaultGpuConfiguration(
                 gpu_config_1024, trt_model, self.generate_gpu_post_processing(1024), num_streams
             ),
@@ -304,11 +314,10 @@ class FaceDetection(InferenceTask):
         datapath = Path("~/scheduler_inputs/Face_Detection").expanduser()
         for file in datapath.iterdir():
             if file.is_file():
-                image : np.ndarray | None = cv2.imread(file, cv2.IMREAD_COLOR)
+                image: np.ndarray | None = cv2.imread(file, cv2.IMREAD_COLOR)
                 if image is None:
                     raise ValueError("Could not load image:", file)
                 self._inputs.append(image)
-
 
     def _generate_input_dictionary(self, input_array: MultidimensionalArray) -> Dict[str, MultidimensionalArray]:
         return {"input": input_array}
@@ -340,8 +349,8 @@ class FaceDetection(InferenceTask):
     # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     # SOFTWARE.
     @staticmethod
-    def post_processing(loc : torch.Tensor, conf : torch.Tensor, final_size : int, original_image : MultidimensionalArray,
-                        device : torch.device):
+    def post_processing(loc: torch.Tensor, conf: torch.Tensor, final_size: int, original_image: MultidimensionalArray,
+                        device: torch.device):
         # assumes original image was loaded via cv2
         original_height, original_width = original_image.shape[:2]
 
@@ -373,19 +382,21 @@ class FaceDetection(InferenceTask):
         _ = boxes[:50]
         _ = scores[:50]
 
-    def generate_gpu_post_processing(self, final_size : int) -> Callable[[TensorRtInferenceJob], None]:
-        def gpu_post_processing(job : TensorRtInferenceJob) -> None:
+    def generate_gpu_post_processing(self, final_size: int) -> Callable[[TensorRtInferenceJob], None]:
+        def gpu_post_processing(job: TensorRtInferenceJob) -> None:
             with torch.cuda.stream(job.stream):
                 loc = job.outputs["loc"]
                 conf = job.outputs["conf"]
                 image = job.inputs.original_input[FaceDetection.image_key]
                 FaceDetection.post_processing(loc, conf, final_size, image, torch.device("cuda"))
+
         return self.finalize_gpu_post_processing(gpu_post_processing)
 
-    def generate_cpu_post_processing(self, final_size : int) -> Callable[[OnnxInferenceJob], None]:
-        def cpu_post_processing(job : OnnxInferenceJob):
+    def generate_cpu_post_processing(self, final_size: int) -> Callable[[OnnxInferenceJob], None]:
+        def cpu_post_processing(job: OnnxInferenceJob):
             loc = torch.as_tensor(job.outputs[0])
             conf = torch.as_tensor(job.outputs[1])
             image = job.inputs.original_input[FaceDetection.image_key]
             FaceDetection.post_processing(loc, conf, final_size, image, torch.device("cpu"))
+
         return self.finalize_cpu_post_processing(cpu_post_processing)

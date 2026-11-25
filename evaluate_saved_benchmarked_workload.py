@@ -14,6 +14,7 @@ def _lists_to_arrays(obj):
         return {k: _lists_to_arrays(v) for k, v in obj.items()}
     return obj
 
+
 def main():
     base_dir = Path("./energy_scheduling_results/considered/testing")
     benchmark_name = "default"
@@ -28,7 +29,9 @@ def main():
     benchmarking_results = create_benchmarking_results(preparation_results, inference_results)
     pprint(benchmarking_results)
     # noinspection PyTypeChecker
-    save_benchmark_results(benchmark_name, benchmarking_results, preparation_results, inference_results, exist_ok=True, results_directory=base_dir)
+    save_benchmark_results(benchmark_name, benchmarking_results, preparation_results, inference_results, exist_ok=True,
+                           results_directory=base_dir)
+
 
 if __name__ == "__main__":
     main()

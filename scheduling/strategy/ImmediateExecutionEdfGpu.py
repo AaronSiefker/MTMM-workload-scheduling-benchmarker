@@ -3,10 +3,9 @@ from __future__ import annotations
 import threading
 import time
 from typing import Final, List, Dict
+from typing import TYPE_CHECKING
 
 import torch.cuda
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from scheduling.BenchmarkScheduler import BenchmarkScheduler
@@ -19,14 +18,14 @@ from tasks.InferenceTask import InferenceTask
 
 
 class ImmediateExecutionEdfGpu(SchedulingStrategy):
-    def __init__(self, default_scheduler : BenchmarkScheduler, is_miss_aware : bool = False):
-        self._default_scheduler : Final[BenchmarkScheduler] = default_scheduler
+    def __init__(self, default_scheduler: BenchmarkScheduler, is_miss_aware: bool = False):
+        self._default_scheduler: Final[BenchmarkScheduler] = default_scheduler
 
-        self._is_miss_aware : Final[bool] = is_miss_aware
-        self._task_engines_by_task_name : Dict[str, TaskEngine] = {}
+        self._is_miss_aware: Final[bool] = is_miss_aware
+        self._task_engines_by_task_name: Dict[str, TaskEngine] = {}
 
-        self._is_executing : bool = False
-        self._stream : Final[torch.cuda.Stream] = torch.cuda.Stream()
+        self._is_executing: bool = False
+        self._stream: Final[torch.cuda.Stream] = torch.cuda.Stream()
 
     def invoke(self, pending_requests: List[InferenceRequest]) -> None:
         now = time.perf_counter()

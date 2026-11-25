@@ -6,17 +6,12 @@ import time
 from datetime import datetime
 from pathlib import Path
 from pprint import pprint
-from statistics import mean
 from time import sleep
 from typing import Dict, Tuple
 
-import torch.cuda
-
 import setup_helper
-from scheduling.AgentWrapper import DefaultWorkloadAgentWrapper
 from scheduling.BenchmarkScheduler import BenchmarkScheduler
 from scheduling.DefaultScheduler import DefaultScheduler
-from scheduling.strategy.tabular.DefaultWorkloadQLearning import DefaultWorkloadQLearning
 from setup_helper import DefaultWorkloadSettings
 from tasks.FaceDetection import FaceDetection
 from tasks.GestureClassification import GestureClassification
@@ -28,23 +23,26 @@ from tasks.dependencies.RandomBatchSizeDependency import RandomBatchSizeDependen
 
 
 def _default_workload_generation_deadline_scheduling(
-        scheduler : DefaultScheduler, gpu_benchmark_results : Dict, cpu_benchmark_results : Dict,
-        settings : DefaultWorkloadSettings,
-        num_streams : int,
-        reset_event : threading.Event | None, interrupt_event : threading.Event | None, continue_event : threading.Event | None
-    ) -> Tuple[threading.Thread, threading.Event]:
-
+        scheduler: DefaultScheduler, gpu_benchmark_results: Dict, cpu_benchmark_results: Dict,
+        settings: DefaultWorkloadSettings,
+        num_streams: int,
+        reset_event: threading.Event | None, interrupt_event: threading.Event | None,
+        continue_event: threading.Event | None
+) -> Tuple[threading.Thread, threading.Event]:
     cancellation_event = threading.Event()
 
     def func():
-        face_detection = FaceDetection(scheduler, settings.face_detection_period, gpu_benchmark_results, cpu_benchmark_results, num_streams)
+        face_detection = FaceDetection(scheduler, settings.face_detection_period, gpu_benchmark_results,
+                                       cpu_benchmark_results, num_streams)
         if settings.is_hand_detection_deadline_shared:
             hand_detection_deadline = settings.hand_detection_period
         else:
             hand_detection_deadline = settings.hand_detection_deadline
 
-        gesture_classification = GestureClassification(scheduler, 0.0, gpu_benchmark_results, cpu_benchmark_results, num_streams)
-        hand_detection = HandDetection(scheduler, hand_detection_deadline, gpu_benchmark_results, cpu_benchmark_results, num_streams,
+        gesture_classification = GestureClassification(scheduler, 0.0, gpu_benchmark_results, cpu_benchmark_results,
+                                                       num_streams)
+        hand_detection = HandDetection(scheduler, hand_detection_deadline, gpu_benchmark_results, cpu_benchmark_results,
+                                       num_streams,
                                        dependencies=[RandomBatchSizeDependency(
                                            gesture_classification, settings.is_hand_detection_deadline_shared,
                                            [1, 2, 3, 4],
@@ -52,8 +50,10 @@ def _default_workload_generation_deadline_scheduling(
                                        )]
                                        )
 
-        image_classification = ImageClassification(scheduler, 0.0, gpu_benchmark_results, cpu_benchmark_results, num_streams)
-        keyword_spotting = KeywordSpotting(scheduler, settings.keyword_spotting_deadline, gpu_benchmark_results,cpu_benchmark_results, num_streams,
+        image_classification = ImageClassification(scheduler, 0.0, gpu_benchmark_results, cpu_benchmark_results,
+                                                   num_streams)
+        keyword_spotting = KeywordSpotting(scheduler, settings.keyword_spotting_deadline, gpu_benchmark_results,
+                                           cpu_benchmark_results, num_streams,
                                            dependencies=[ProbabilisticDependency(
                                                image_classification, settings.is_keyword_spotting_deadline_shared,
                                                settings.image_classification_probability,
@@ -82,23 +82,23 @@ def _default_workload_generation_deadline_scheduling(
         hand_detection_count = 0
         while True:
             if interrupt_event is not None and interrupt_event.is_set():
-                #print("interrupted workload generation")
-                #print("next_keyword_spotting_count:", next_keyword_spotting_count)
-                #print("face_detection_count:", face_detection_count)
-                #print("hand_detection_count:", hand_detection_count)
-                #print()
-                #print()
+                # print("interrupted workload generation")
+                # print("next_keyword_spotting_count:", next_keyword_spotting_count)
+                # print("face_detection_count:", face_detection_count)
+                # print("hand_detection_count:", hand_detection_count)
+                # print()
+                # print()
                 interrupt_time = time.perf_counter()
                 if continue_event is None:
                     raise ValueError("Error, if interrupt_event is present, continue_event must also exist")
                 continue_event.wait()
-                #print()
-                #print("continued workload generation")
-                #print("next_keyword_spotting_count:", next_keyword_spotting_count)
-                #print("face_detection_count:", face_detection_count)
-                #print("hand_detection_count:", hand_detection_count)
-                #print()
-                #print()
+                # print()
+                # print("continued workload generation")
+                # print("next_keyword_spotting_count:", next_keyword_spotting_count)
+                # print("face_detection_count:", face_detection_count)
+                # print("hand_detection_count:", hand_detection_count)
+                # print()
+                # print()
                 interrupt_event.clear()
                 continue_event.clear()
 
@@ -107,15 +107,15 @@ def _default_workload_generation_deadline_scheduling(
                 next_hand_detection += time_diff
                 next_keyword_spotting += time_diff
             now = time.perf_counter()
-            #print("now:", now)
+            # print("now:", now)
             if now >= absolute_end or cancellation_event.is_set():
                 print("canceled workload generator")
                 print("next_keyword_spotting_count:", next_keyword_spotting_count)
                 print("face_detection_count:", face_detection_count)
                 print("hand_detection_count:", hand_detection_count)
 
-                #print("diffs")
-                #for task in tasks:
+                # print("diffs")
+                # for task in tasks:
                 #    if len(task.diffs) == 0:
                 #        continue
                 #    print(task.task_name, ":", mean(task.diffs))
@@ -123,13 +123,13 @@ def _default_workload_generation_deadline_scheduling(
 
             if reset_event is not None and reset_event.is_set():
                 reset_event.clear()
-                #print("reset workload generator")
-                #print("next_keyword_spotting_count:", next_keyword_spotting_count)
-                #print("face_detection_count:", face_detection_count)
-                #print("hand_detection_count:", hand_detection_count)
+                # print("reset workload generator")
+                # print("next_keyword_spotting_count:", next_keyword_spotting_count)
+                # print("face_detection_count:", face_detection_count)
+                # print("hand_detection_count:", hand_detection_count)
                 for task in tasks:
                     task.reset_request_id_counter()
-                sleep(0.250) # provide time for garbage collection during training
+                sleep(0.250)  # provide time for garbage collection during training
                 now = time.perf_counter()
                 absolute_end = now + settings.duration
                 next_face_detection = now + settings.face_detection_period
@@ -142,9 +142,10 @@ def _default_workload_generation_deadline_scheduling(
             new_requests = []
             if now >= next_keyword_spotting:
                 next_keyword_spotting_count += 1
-                #print("pre:", time.perf_counter())
-                new_requests.append(keyword_spotting.generate_inference_request(external_deadline=next_keyword_spotting + settings.keyword_spotting_period))
-                #print("post:", time.perf_counter())
+                # print("pre:", time.perf_counter())
+                new_requests.append(keyword_spotting.generate_inference_request(
+                    external_deadline=next_keyword_spotting + settings.keyword_spotting_period))
+                # print("post:", time.perf_counter())
                 # next_keyword_spotting = next_keyword_spotting + settings.keyword_spotting_period
                 next_keyword_spotting = next_keyword_spotting + settings.keyword_spotting_period
 
@@ -155,12 +156,13 @@ def _default_workload_generation_deadline_scheduling(
                 else:
                     external_deadline = next_hand_detection + settings.hand_detection_deadline
                 new_requests.append(hand_detection.generate_inference_request(external_deadline=external_deadline))
-                #next_hand_detection = next_hand_detection + settings.hand_detection_period
+                # next_hand_detection = next_hand_detection + settings.hand_detection_period
                 next_hand_detection = next_hand_detection + settings.hand_detection_period
 
             if now >= next_face_detection:
                 face_detection_count += 1
-                new_requests.append(face_detection.generate_inference_request(external_deadline=next_face_detection + settings.face_detection_period))
+                new_requests.append(face_detection.generate_inference_request(
+                    external_deadline=next_face_detection + settings.face_detection_period))
                 # like this (instead of += period), deadlines are a bit more generous, but protects against GIL induced delay
                 # next_face_detection = next_face_detection + settings.face_detection_period
                 next_face_detection = next_face_detection + settings.face_detection_period
@@ -176,13 +178,15 @@ def _default_workload_generation_deadline_scheduling(
     return thread, cancellation_event
 
 
-def start_benchmark_strategy_thread(strategy : BenchmarkScheduler.Strategy, result_file_path : str | os.PathLike,
-                                    energy_limit : float, energy_interval_length : float, strategy_kwargs : Dict | None = None) \
+def start_benchmark_strategy_thread(strategy: BenchmarkScheduler.Strategy, result_file_path: str | os.PathLike,
+                                    energy_limit: float, energy_interval_length: float,
+                                    strategy_kwargs: Dict | None = None) \
         -> Tuple[threading.Thread, BenchmarkScheduler]:
     scheduler = BenchmarkScheduler(strategy, result_file_path, energy_limit, energy_interval_length, strategy_kwargs)
     scheduler_thread = threading.Thread(target=scheduler.activate)
     scheduler_thread.start()
     return scheduler_thread, scheduler
+
 
 def main():
     setup_helper.try_increase_priority()
@@ -197,7 +201,7 @@ def main():
     if (not exist_ok) and results_file.exists():
         raise ValueError(f"Error, a scheduling benchmark saved at path '{results_file} already exists, aborting")
 
-    #used_gpu_benchmark = "benchmarking_results/fixed_freq/default-gpu_only-background_gpu_benchmark-SCHED_FIFO.json"
+    # used_gpu_benchmark = "benchmarking_results/fixed_freq/default-gpu_only-background_gpu_benchmark-SCHED_FIFO.json"
     used_gpu_benchmark = "benchmarking_results/fixed_freq/default-gpu_only-SCHED_FIFO.json"
     with open(used_gpu_benchmark) as f:
         gpu_benchmark_results = json.load(f)
@@ -206,9 +210,9 @@ def main():
         cpu_benchmark_results = json.load(f)
 
     used_strategy = BenchmarkScheduler.Strategy.EMERALD_MEAN_NORMAL_PERIODS_1_STREAM
-    #cuda_streams = [torch.cuda.Stream(), torch.cuda.Stream()]
-    #agent_wrapper = DefaultWorkloadAgentWrapper(2)
-    #ppo_strategy_kwargs = {"agent_path": "rl_agents/default_workload_prep_then_action_online_2_streams_64_64_64.zip",
+    # cuda_streams = [torch.cuda.Stream(), torch.cuda.Stream()]
+    # agent_wrapper = DefaultWorkloadAgentWrapper(2)
+    # ppo_strategy_kwargs = {"agent_path": "rl_agents/default_workload_prep_then_action_online_2_streams_64_64_64.zip",
     #          "agent_wrapper": agent_wrapper, "cuda_streams": cuda_streams}
 
     # preparation_q_values, execution_q_values = DefaultWorkloadQLearning.load_q_value_arrays(
@@ -248,16 +252,15 @@ def main():
     gc.disable()
     scheduler_thread, scheduler = start_benchmark_strategy_thread(
         used_strategy, results_file, settings.energy_limit, settings.energy_interval_length,
-        #tabular_strategy_kwargs
+        # tabular_strategy_kwargs
     )
-
 
     workload_thread, _ = _default_workload_generation_deadline_scheduling(
         scheduler, gpu_benchmark_results, cpu_benchmark_results, settings, scheduler.get_num_cuda_streams(),
         None, None, None)
     print("current time:", datetime.now().strftime("%H:%M:%S"))
     print("duration:", settings.duration, "seconds")
-    #sleep(settings.duration)
+    # sleep(settings.duration)
     workload_thread.join()
     print("joined workload_thread")
     scheduler.terminate()

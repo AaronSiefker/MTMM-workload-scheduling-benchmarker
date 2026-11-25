@@ -9,9 +9,10 @@ class MultidimensionalArray(Protocol):
     def shape(self) -> tuple[int, ...]:
         ...
 
+
 class ConfigurationInputConverter(ABC):
     @abstractmethod
-    def convert_input(self, model_input : Dict[str, MultidimensionalArray]) -> Dict[str, MultidimensionalArray]:
+    def convert_input(self, model_input: Dict[str, MultidimensionalArray]) -> Dict[str, MultidimensionalArray]:
         """
         converts the model input according to the conversion associated with the class this is called on.
         Note that the arrays in the returned dictionary may share memory with the original dictionary. As such,
@@ -22,7 +23,8 @@ class ConfigurationInputConverter(ABC):
         """
         pass
 
-def convert_hwc_to_bchw_if_applicable(image : torch.Tensor) -> torch.Tensor:
+
+def convert_hwc_to_bchw_if_applicable(image: torch.Tensor) -> torch.Tensor:
     """
     Converts an image loaded via PIL to BCHW. If the image is already in BCHW form, nothing happens
     :param image: the image to convert
