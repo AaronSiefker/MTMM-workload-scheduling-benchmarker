@@ -21,3 +21,20 @@ RUN pip3 install stable-baselines3 sb3_contrib gymnasium
 WORKDIR /workspace
 
 CMD ["/bin/bash"]
+
+# Command:
+#docker run --runtime nvidia -it -v "$(pwd):/workspace" --privileged
+# -v "<datasets_location>:/root/datasets" -v
+# "<scheduler_inputs_location>:/root/scheduler_inputs"
+# -v "/usr/bin/jetson_clocks:/usr/bin/jetson_clocks" -v "/sys/kernel/debug:/sys/kernel/debug"
+# -v "/lib/aarch64-linux-gnu/libxcb.so.1:/lib/aarch64-linux-gnu/libxcb.so.1"
+# -v "/lib/aarch64-linux-gnu/libGL.so.1:/lib/aarch64-linux-gnu/libGL.so1"
+# -v "/lib/aarch64-linux-gnu/libXau.so.6:/lib/aarch64-linux-gnu/libXau.so.6"
+# -v "/lib/aarch64-linux-gnu/libXdmcp.so.6:/lib/aarch64-linux-gnu/libXdmcp.so.6"
+# -v "/lib/aarch64-linux-gnu/libGLdispatch.so.0:/lib/aarch64-linux-gnu/libGLdispatch.so.0"
+# -v "/lib/aarch64-linux-gnu/libGLX.so.0:/lib/aarch64-linux-gnu/libGLX.so.0"
+# -v "/lib/aarch64-linux-gnu/libX11.so.6:/lib/aarch64-linux-gnu/libX11.so.6"
+# -v "/usr/bin/tegrastats:/usr/bin/tegrastats"
+# --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 --rm <tag>:latest
+
+# Should be executed in ../MTMM-workload-scheduling-benchmarker
